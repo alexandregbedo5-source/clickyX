@@ -27,6 +27,7 @@ pub struct AiConfig {
     pub openai_api_key: Option<String>,
     pub openai_model: String,
     pub openai_base_url: String,
+    pub openai_stt_base_url: Option<String>,
     pub default_provider: String,
     pub system_prompt: String,
 }
@@ -39,6 +40,7 @@ impl Default for AiConfig {
             openai_api_key: None,
             openai_model: "gpt-4o".into(),
             openai_base_url: "https://api.openai.com".into(),
+            openai_stt_base_url: None,
             default_provider: "anthropic".into(),
             system_prompt: "You are ClickyX, a helpful AI assistant.".into(),
         }
@@ -104,9 +106,11 @@ pub fn create_provider(config: &AiConfig) -> Result<Box<dyn AiProvider>, AiError
             )))
         }
         "openai" => {
+            let is_local = config.openai_base_url.contains("localhost") || config.openai_base_url.contains("127.0.0.1");
             let api_key = config
                 .openai_api_key
                 .clone()
+                .or_else(|| if is_local { Some("local".to_string()) } else { None })
                 .ok_or_else(|| AiError::Config("OpenAI API key not configured".into()))?;
             Ok(Box::new(openai::OpenAIProvider::new(
                 api_key,
@@ -141,9 +145,11 @@ pub fn create_provider_for_model(config: &AiConfig, model: &str) -> Result<Box<d
             )))
         }
         "openai" => {
+            let is_local = config.openai_base_url.contains("localhost") || config.openai_base_url.contains("127.0.0.1");
             let api_key = config
                 .openai_api_key
                 .clone()
+                .or_else(|| if is_local { Some("local".to_string()) } else { None })
                 .ok_or_else(|| AiError::Config("OpenAI API key not configured".into()))?;
             Ok(Box::new(openai::OpenAIProvider::new(
                 api_key,
@@ -181,6 +187,9 @@ pub fn merge_ai_config(current: &AiConfig, partial: &serde_json::Value) -> AiCon
         }
         if let Some(v) = obj.get("openai_base_url").and_then(|v| v.as_str()) {
             config.openai_base_url = v.to_string();
+        }
+        if let Some(v) = obj.get("openai_stt_base_url").and_then(|v| v.as_str()) {
+            config.openai_stt_base_url = Some(v.to_string());
         }
         if let Some(v) = obj.get("default_provider").and_then(|v| v.as_str()) {
             config.default_provider = v.to_string();

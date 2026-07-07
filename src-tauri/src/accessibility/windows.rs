@@ -14,8 +14,10 @@ impl WindowsAccessibility {
 }
 
 /// Run a PowerShell command and return trimmed stdout on success.
+/// Uses 'pwsh' (PowerShell Core) if available, otherwise falls back to 'powershell'.
 fn powershell(script: &str) -> Option<String> {
-    let out = Command::new("powershell")
+    let cmd = if cfg!(windows) { "powershell" } else { "pwsh" };
+    let out = Command::new(cmd)
         .args(["-NoProfile", "-NonInteractive", "-Command", script])
         .output()
         .ok()?;
@@ -274,21 +276,57 @@ if ($el -ne $null) {{
     }
 
     fn get_focused_element(&self) -> Result<Option<AccessibilityElement>, String> {
-        let title = match get_focused_window_title() {
-            Some(t) if !t.is_empty() => t,
-            _ => return Ok(None),
-        };
-        let pid = get_foreground_pid().unwrap_or(0);
-        let proc = get_foreground_process_name().unwrap_or_default();
-        let (x, y, w, h) = get_foreground_window_rect();
+        // Optimized: batch multiple queries into one PowerShell execution
+        let script = r#"
+Add-Type @"
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public class Win32 {
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
+    [DllImport("user32.dll")]
+    public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+    public struct RECT { public int Left, Top, Right, Bottom; }
+}
+"@
+$hwnd = [Win32]::GetForegroundWindow()
+if ($hwnd -eq [IntPtr]::Zero) { return "" }
+$sb = New-Object System.Text.StringBuilder(512)
+[Win32]::GetWindowText($hwnd, $sb, 512) | Out-Null
+$pid = 0
+[Win32]::GetWindowThreadProcessId($hwnd, [ref]$pid) | Out-Null
+$proc = (Get-Process -Id $pid -ErrorAction SilentlyContinue).Name
+$r = New-Object Win32+RECT
+[Win32]::GetWindowRect($hwnd, [ref]$r) | Out-Null
+"$($sb.ToString())|$pid|$proc|$($r.Left),$($r.Top),$($r.Right - $r.Left),$($r.Bottom - $r.Top)"
+"#;
 
-        let mut elem = build_element(&title, &proc, pid, true);
-        elem.x = x;
-        elem.y = y;
-        elem.width = w;
-        elem.height = h;
-        elem.focused = true;
-        Ok(Some(elem))
+        if let Some(info) = powershell(script) {
+            let parts: Vec<&str> = info.split('|').collect();
+            if parts.len() == 4 {
+                let title = parts[0].to_string();
+                let pid = parts[1].parse().unwrap_or(0);
+                let proc = parts[2].to_string();
+                let coords: Vec<i32> = parts[3].split(',').filter_map(|s| s.trim().parse().ok()).collect();
+                
+                if coords.len() == 4 {
+                    let mut elem = build_element(&title, &proc, pid, true);
+                    elem.x = coords[0];
+                    elem.y = coords[1];
+                    elem.width = coords[2] as u32;
+                    elem.height = coords[3] as u32;
+                    elem.focused = true;
+                    return Ok(Some(elem));
+                }
+            }
+        }
+        
+        Ok(None)
     }
 
     fn get_root_element(&self) -> Result<AccessibilityElement, String> {

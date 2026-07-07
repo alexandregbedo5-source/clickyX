@@ -59,7 +59,7 @@ function EmptyAgentsCTA({ onCreateAgent }: { onCreateAgent: () => void }) {
 }
 
 function HomeTab() {
-  const [showChat, setShowChat] = useState(false);
+  const [showChat, setShowChat] = useState(true);
   const [initialSuggestion, setInitialSuggestion] = useState<string | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { setActiveTab } = useAppContext();

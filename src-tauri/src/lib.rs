@@ -206,6 +206,7 @@ pub fn run() {
             let stt_cfg = audio::SttConfig {
                 provider: stt_provider,
                 api_key: stt_api_key,
+		base_url: config.ai.openai_stt_base_url.clone(),
                 ..Default::default()
             };
 

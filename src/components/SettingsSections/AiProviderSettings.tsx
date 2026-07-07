@@ -146,7 +146,23 @@ function AiProviderSettings() {
           />
         </div>
         <div className="ai-provider-group">
-          <h4>OpenAI / Compatible</h4>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h4>OpenAI / Compatible</h4>
+            <button 
+              className="settings-small-btn"
+              onClick={() => {
+                setOpenaiBaseUrl("http://localhost:11434/v1");
+                setOpenaiModel("llama3");
+                if (!openaiKey && !hasOpenaiKey) {
+                  setOpenaiKey("ollama");
+                }
+                showToast("Ollama preset applied", "success");
+              }}
+              style={{ padding: "4px 8px", fontSize: "11px" }}
+            >
+              Use Ollama (Local)
+            </button>
+          </div>
           <input
             type="password"
             className="settings-input"

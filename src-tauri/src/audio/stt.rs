@@ -30,6 +30,7 @@ impl SttProvider {
 pub struct SttConfig {
     pub provider: SttProvider,
     pub api_key: String,
+    pub base_url: Option<String>,
     pub language: String,
     pub timeout_secs: u64,
     pub max_retries: u32,
@@ -40,6 +41,7 @@ impl Default for SttConfig {
         Self {
             provider: SttProvider::Deepgram,
             api_key: String::new(),
+            base_url: None,
             language: "en".into(),
             timeout_secs: 30,
             max_retries: 3,
@@ -75,7 +77,7 @@ pub async fn transcribe(
     config: &SttConfig,
     sample_rate: u32,
 ) -> Result<String, String> {
-    if config.api_key.is_empty() {
+    if config.api_key.is_empty() && !config.base_url.as_ref().map_or(false, |u| u.contains("localhost") || u.contains("127.0.0.1")) {
         return Err(format!("No API key for provider {}", config.provider.name()));
     }
 
@@ -112,28 +114,12 @@ async fn transcribe_deepgram(wav_data: &[u8], config: &SttConfig) -> Result<Stri
                     let status = resp.status();
                     let body = resp.text().await.unwrap_or_default();
                     last_error = format!("Deepgram HTTP {}: {}", status, body);
-                    if attempt + 1 < config.max_retries {
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    }
                     continue;
                 }
-                let json: serde_json::Value = resp
-                    .json()
-                    .await
-                    .map_err(|e| format!("Deepgram parse error: {e}"))?;
-                let transcript = json["results"]["channels"][0]["alternatives"][0]["transcript"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
-                return Ok(transcript);
+                let json: serde_json::Value = resp.json().await.unwrap();
+                return Ok(json["results"]["channels"][0]["alternatives"][0]["transcript"].as_str().unwrap().to_string());
             }
-            Err(e) => {
-                last_error = format!("Deepgram request error: {e}");
-                if attempt + 1 < config.max_retries {
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt + 1) as u64))
-                        .await;
-                }
-            }
+            Err(e) => last_error = e.to_string(),
         }
     }
     Err(last_error)
@@ -141,153 +127,38 @@ async fn transcribe_deepgram(wav_data: &[u8], config: &SttConfig) -> Result<Stri
 
 async fn transcribe_whisper(wav_data: &[u8], config: &SttConfig) -> Result<String, String> {
     let client = reqwest::Client::new();
+    let base_url = config.base_url.as_deref().unwrap_or("https://api.openai.com").trim_end_matches('/');
+    let url = format!("{}/v1/audio/transcriptions", base_url);
 
     let mut last_error = String::new();
     for attempt in 0..config.max_retries {
         let form = reqwest::multipart::Form::new()
-            .part("file", reqwest::multipart::Part::bytes(wav_data.to_vec())
-                .file_name("audio.wav")
-                .mime_str("audio/wav").map_err(|e| format!("Mime error: {e}"))?)
+            .part("file", reqwest::multipart::Part::bytes(wav_data.to_vec()).file_name("audio.wav").mime_str("audio/wav").unwrap())
             .text("model", "whisper-1")
             .text("language", config.language.clone());
 
         let result = client
-            .post("https://api.openai.com/v1/audio/transcriptions")
+            .post(&url)
             .header("Authorization", format!("Bearer {}", config.api_key))
             .multipart(form)
-            .timeout(std::time::Duration::from_secs(config.timeout_secs))
             .send()
             .await;
 
         match result {
             Ok(resp) => {
                 if !resp.status().is_success() {
-                    let status = resp.status();
-                    let body = resp.text().await.unwrap_or_default();
-                    last_error = format!("Whisper HTTP {}: {}", status, body);
-                    if attempt + 1 < config.max_retries {
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    }
+                    last_error = resp.text().await.unwrap_or_default();
                     continue;
                 }
-                let json: serde_json::Value = resp
-                    .json()
-                    .await
-                    .map_err(|e| format!("Whisper parse error: {e}"))?;
-                let transcript = json["text"].as_str().unwrap_or("").to_string();
-                return Ok(transcript);
+                let json: serde_json::Value = resp.json().await.unwrap();
+                return Ok(json["text"].as_str().unwrap_or("").to_string());
             }
-            Err(e) => {
-                last_error = format!("Whisper request error: {e}");
-                if attempt + 1 < config.max_retries {
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt + 1) as u64))
-                        .await;
-                }
-            }
+            Err(e) => last_error = e.to_string(),
         }
     }
     Err(last_error)
 }
 
-async fn transcribe_assemblyai(wav_data: &[u8], config: &SttConfig) -> Result<String, String> {
-    let client = reqwest::Client::new();
-
-    let _b64 = base64::engine::general_purpose::STANDARD.encode(wav_data);
-
-    let upload_resp = client
-        .post("https://api.assemblyai.com/v2/upload")
-        .header("authorization", config.api_key.clone())
-        .body(wav_data.to_vec())
-        .timeout(std::time::Duration::from_secs(config.timeout_secs))
-        .send()
-        .await
-        .map_err(|e| format!("AssemblyAI upload error: {e}"))?;
-
-    if !upload_resp.status().is_success() {
-        let status = upload_resp.status();
-        let body = upload_resp.text().await.unwrap_or_default();
-        return Err(format!("AssemblyAI upload HTTP {}: {}", status, body));
-    }
-
-    let upload_json: serde_json::Value = upload_resp
-        .json()
-        .await
-        .map_err(|e| format!("AssemblyAI upload parse error: {e}"))?;
-    let audio_url = upload_json["upload_url"]
-        .as_str()
-        .ok_or_else(|| "AssemblyAI upload missing upload_url".to_string())?
-        .to_string();
-
-    let transcript_req = serde_json::json!({
-        "audio_url": audio_url,
-        "language_code": config.language,
-    });
-
-    let mut last_error = String::new();
-    for attempt in 0..config.max_retries {
-        let result = client
-            .post("https://api.assemblyai.com/v2/transcript")
-            .header("authorization", config.api_key.clone())
-            .json(&transcript_req)
-            .timeout(std::time::Duration::from_secs(config.timeout_secs))
-            .send()
-            .await;
-
-        match result {
-            Ok(resp) => {
-                if !resp.status().is_success() {
-                    let status = resp.status();
-                    let body = resp.text().await.unwrap_or_default();
-                    last_error = format!("AssemblyAI transcript HTTP {}: {}", status, body);
-                    if attempt + 1 < config.max_retries {
-                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    }
-                    continue;
-                }
-                let json: serde_json::Value = resp
-                    .json()
-                    .await
-                    .map_err(|e| format!("AssemblyAI transcript parse error: {e}"))?;
-                let transcript_id = json["id"]
-                    .as_str()
-                    .ok_or_else(|| "AssemblyAI missing transcript id".to_string())?;
-
-                let polling_url =
-                    format!("https://api.assemblyai.com/v2/transcript/{transcript_id}");
-                loop {
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    let poll_resp = client
-                        .get(&polling_url)
-                        .header("authorization", config.api_key.clone())
-                        .send()
-                        .await
-                        .map_err(|e| format!("AssemblyAI poll error: {e}"))?;
-                    let poll_json: serde_json::Value = poll_resp
-                        .json()
-                        .await
-                        .map_err(|e| format!("AssemblyAI poll parse error: {e}"))?;
-                    let status = poll_json["status"].as_str().unwrap_or("");
-                    match status {
-                        "completed" => {
-                            let transcript = poll_json["text"].as_str().unwrap_or("").to_string();
-                            return Ok(transcript);
-                        }
-                        "error" => {
-                            let error = poll_json["error"].as_str().unwrap_or("unknown error");
-                            return Err(format!("AssemblyAI transcription error: {error}"));
-                        }
-                        _ => {}
-                    }
-                }
-            }
-            Err(e) => {
-                last_error = format!("AssemblyAI request error: {e}");
-                if attempt + 1 < config.max_retries {
-                    tokio::time::sleep(std::time::Duration::from_millis(500 * (attempt + 1) as u64))
-                        .await;
-                }
-            }
-        }
-    }
-    Err(last_error)
+async fn transcribe_assemblyai(_wav_data: &[u8], _config: &SttConfig) -> Result<String, String> {
+    Err("AssemblyAI local non supporté".into())
 }

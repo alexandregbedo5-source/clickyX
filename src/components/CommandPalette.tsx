@@ -62,7 +62,7 @@ export default function CommandPalette({ onClose, onNavigate }: Props) {
   const categories = Array.from(new Set(filtered.map((i) => i.category)));
 
   return (
-    <div className="palette-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Command palette">
+    <div className="command-palette palette-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label="Command palette">
       <div className="palette-box" onClick={(e) => e.stopPropagation()}>
         <div className="palette-input-wrap">
           <svg className="palette-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

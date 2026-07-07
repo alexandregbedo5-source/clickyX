@@ -314,7 +314,7 @@ function AppInner() {
                 role="tab"
                 aria-selected={activeTab === tab.id}
                 aria-current={activeTab === tab.id ? "page" : undefined}
-                aria-controls={`tabpanel-${tab.id}`}
+                aria-controls={`${tab.id}-panel`}
                 id={`tab-${tab.id}`}
                 className={`tab-button ${activeTab === tab.id ? "active" : ""}`}
                 onClick={() => setActiveTab(tab.id)}
@@ -360,7 +360,7 @@ function AppInner() {
         </nav>
 
         <main
-          id={`tabpanel-${activeTab}`}
+          id={`${activeTab}-panel`}
           role="tabpanel"
           aria-labelledby={`tab-${activeTab}`}
           className={`tab-content${panelDragOver ? " panel-drop-active" : ""}`}
