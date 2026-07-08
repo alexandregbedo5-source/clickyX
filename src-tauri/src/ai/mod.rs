@@ -1,6 +1,8 @@
 pub mod catalog;
 pub mod anthropic;
 pub mod openai;
+pub mod google;
+pub mod ollama;
 pub mod streaming;
 pub mod guidance;
 pub mod app_contexts;
@@ -28,6 +30,11 @@ pub struct AiConfig {
     pub openai_model: String,
     pub openai_base_url: String,
     pub openai_stt_base_url: Option<String>,
+    pub google_api_key: Option<String>,
+    pub google_model: String,
+    pub google_base_url: String,
+    pub ollama_model: String,
+    pub ollama_base_url: String,
     pub default_provider: String,
     pub system_prompt: String,
 }
@@ -41,6 +48,11 @@ impl Default for AiConfig {
             openai_model: "gpt-4o".into(),
             openai_base_url: "https://api.openai.com".into(),
             openai_stt_base_url: None,
+            google_api_key: None,
+            google_model: "text-bison-001".into(),
+            google_base_url: "https://generativelanguage.googleapis.com".into(),
+            ollama_model: "llama2".into(),
+            ollama_base_url: "http://localhost:11434".into(),
             default_provider: "anthropic".into(),
             system_prompt: "You are ClickyX, a helpful AI assistant.".into(),
         }
@@ -118,6 +130,23 @@ pub fn create_provider(config: &AiConfig) -> Result<Box<dyn AiProvider>, AiError
                 config.openai_base_url.clone(),
             )))
         }
+        "google" => {
+            let api_key = config
+                .google_api_key
+                .clone()
+                .ok_or_else(|| AiError::Config("Google API key not configured".into()))?;
+            Ok(Box::new(google::GoogleProvider::new(
+                api_key,
+                full_prompt,
+                config.google_base_url.clone(),
+            )))
+        }
+        "ollama" => {
+            Ok(Box::new(ollama::OllamaProvider::new(
+                full_prompt,
+                config.ollama_base_url.clone(),
+            )))
+        }
         p => Err(AiError::Config(format!("Unknown provider: {p}"))),
     }
 }
@@ -125,6 +154,10 @@ pub fn create_provider(config: &AiConfig) -> Result<Box<dyn AiProvider>, AiError
 pub fn resolve_provider_for_model(model: &str) -> &str {
     if model.contains("claude") || model.contains("anthropic") {
         "anthropic"
+    } else if model.contains("bison") || model.contains("google") {
+        "google"
+    } else if model.contains("llama") || model.contains("mistral") || model.contains("neural-chat") || model.contains("orca") {
+        "ollama"
     } else {
         "openai"
     }
@@ -190,6 +223,15 @@ pub fn merge_ai_config(current: &AiConfig, partial: &serde_json::Value) -> AiCon
         }
         if let Some(v) = obj.get("openai_stt_base_url").and_then(|v| v.as_str()) {
             config.openai_stt_base_url = Some(v.to_string());
+        }
+        if let Some(v) = obj.get("google_api_key").and_then(|v| v.as_str()) {
+            config.google_api_key = Some(v.to_string());
+        }
+        if let Some(v) = obj.get("google_model").and_then(|v| v.as_str()) {
+            config.google_model = v.to_string();
+        }
+        if let Some(v) = obj.get("google_base_url").and_then(|v| v.as_str()) {
+            config.google_base_url = v.to_string();
         }
         if let Some(v) = obj.get("default_provider").and_then(|v| v.as_str()) {
             config.default_provider = v.to_string();

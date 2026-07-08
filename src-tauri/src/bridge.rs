@@ -345,6 +345,7 @@ async fn transcribe(
     let stt_cfg = crate::audio::SttConfig {
         provider: stt_provider,
         api_key,
+        base_url: config.ai.openai_stt_base_url.clone(),
         language: "en".into(),
         timeout_secs: 30,
         max_retries: 3,

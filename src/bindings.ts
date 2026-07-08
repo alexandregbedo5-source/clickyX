@@ -62,6 +62,11 @@ export function invoke<T>(cmd: string, args?: any): Promise<T> {
         openai_api_key: null,
         openai_model: "gpt-4o",
         openai_base_url: "https://api.openai.com/v1",
+        google_api_key: null,
+        google_model: "text-bison-001",
+        google_base_url: "https://generativelanguage.googleapis.com",
+        ollama_model: "llama2",
+        ollama_base_url: "http://localhost:11434",
         default_provider: "anthropic",
         system_prompt: "",
       }) as any;
@@ -183,6 +188,11 @@ export interface AiConfig {
   openai_api_key: string | null;
   openai_model: string;
   openai_base_url: string;
+  google_api_key: string | null;
+  google_model: string;
+  google_base_url: string;
+  ollama_model: string;
+  ollama_base_url: string;
   default_provider: string;
   system_prompt: string;
 }

@@ -5,6 +5,7 @@ pub enum SttProvider {
     Deepgram,
     OpenAIWhisper,
     AssemblyAI,
+    Google,
 }
 
 impl SttProvider {
@@ -13,6 +14,7 @@ impl SttProvider {
             "deepgram" => Some(Self::Deepgram),
             "whisper" | "openai" => Some(Self::OpenAIWhisper),
             "assemblyai" => Some(Self::AssemblyAI),
+            "google" | "gcp" => Some(Self::Google),
             _ => None,
         }
     }
@@ -22,6 +24,7 @@ impl SttProvider {
             Self::Deepgram => "deepgram",
             Self::OpenAIWhisper => "openai",
             Self::AssemblyAI => "assemblyai",
+            Self::Google => "google",
         }
     }
 }
@@ -87,6 +90,7 @@ pub async fn transcribe(
         SttProvider::Deepgram => transcribe_deepgram(&wav_bytes, config).await,
         SttProvider::OpenAIWhisper => transcribe_whisper(&wav_bytes, config).await,
         SttProvider::AssemblyAI => transcribe_assemblyai(&wav_bytes, config).await,
+        SttProvider::Google => Err("Google STT provider not implemented".into()),
     }
 }
 

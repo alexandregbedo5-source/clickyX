@@ -17,6 +17,11 @@ function AiProviderSettings() {
   const [openaiBaseUrl, setOpenaiBaseUrl] = useState("https://api.openai.com/v1");
   const [anthropicModel, setAnthropicModel] = useState("claude-sonnet-4-20250514");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o");
+  const [googleKey, setGoogleKey] = useState("");
+  const [googleModel, setGoogleModel] = useState("text-bison-001");
+  const [googleBaseUrl, setGoogleBaseUrl] = useState("https://generativelanguage.googleapis.com");
+  const [ollamaModel, setOllamaModel] = useState("llama2");
+  const [ollamaBaseUrl, setOllamaBaseUrl] = useState("http://localhost:11434");
   const [defaultProvider, setDefaultProvider] = useState("anthropic");
   const [systemPrompt, setSystemPrompt] = useState("");
 
@@ -39,6 +44,10 @@ function AiProviderSettings() {
       setSystemPrompt(aiConfig.system_prompt || "");
       setHasAnthropicKey(!!aiConfig.anthropic_api_key);
       setHasOpenaiKey(!!aiConfig.openai_api_key);
+      setGoogleModel(aiConfig.google_model || "text-bison-001");
+      setGoogleBaseUrl(aiConfig.google_base_url || "https://generativelanguage.googleapis.com");
+      setOllamaModel(aiConfig.ollama_model || "llama2");
+      setOllamaBaseUrl(aiConfig.ollama_base_url || "http://localhost:11434");
     }
   }, [aiConfig]);
 
@@ -63,6 +72,11 @@ function AiProviderSettings() {
         ...(openaiKey ? { openai_api_key: openaiKey } : {}),
         openai_model: openaiModel,
         openai_base_url: openaiBaseUrl,
+        ...(googleKey ? { google_api_key: googleKey } : {}),
+        google_model: googleModel,
+        google_base_url: googleBaseUrl,
+        ollama_model: ollamaModel,
+        ollama_base_url: ollamaBaseUrl,
         default_provider: defaultProvider,
         system_prompt: systemPrompt,
       });
@@ -78,6 +92,7 @@ function AiProviderSettings() {
         cartesiaKey && { provider: "cartesia", key: cartesiaKey },
         deepgramKey && { provider: "deepgram", key: deepgramKey },
         assemblyaiKey && { provider: "assemblyai", key: assemblyaiKey },
+        googleKey && { provider: "google", key: googleKey },
       ].filter(Boolean) as { provider: string; key: string }[];
       
       await updateAppConfig({ api_keys: newApiKeys });
@@ -94,6 +109,7 @@ function AiProviderSettings() {
   }, [
     anthropicKey, anthropicModel, openaiKey, openaiModel, openaiBaseUrl,
     defaultProvider, systemPrompt, elevenlabsKey, cartesiaKey, deepgramKey, assemblyaiKey,
+    googleKey, googleModel, googleBaseUrl, ollamaModel, ollamaBaseUrl,
     updateAiConfig, updateAppConfig, showToast
   ]);
 
@@ -206,6 +222,50 @@ function AiProviderSettings() {
           />
         </div>
         <div className="ai-provider-group">
+          <h4>Google (PaLM / Vertex)</h4>
+          <input
+            type="password"
+            className="settings-input"
+            placeholder="API Key"
+            value={googleKey}
+            onChange={(e) => setGoogleKey(e.target.value)}
+            autoComplete="new-password"
+          />
+          <input
+            type="text"
+            className="settings-input"
+            placeholder="Model (e.g., text-bison-001)"
+            value={googleModel}
+            onChange={(e) => setGoogleModel(e.target.value)}
+          />
+          <input
+            type="text"
+            className="settings-input"
+            placeholder="Base URL (e.g., https://generativelanguage.googleapis.com)"
+            value={googleBaseUrl}
+            onChange={(e) => setGoogleBaseUrl(e.target.value)}
+          />
+          <span className="settings-hint">Use an API key from Google Cloud IAM; PaLM and Vertex endpoints are accepted.</span>
+        </div>
+        <div className="ai-provider-group">
+          <h4>Ollama (Local)</h4>
+          <input
+            type="text"
+            className="settings-input"
+            placeholder="Model (e.g., llama2, mistral, neural-chat)"
+            value={ollamaModel}
+            onChange={(e) => setOllamaModel(e.target.value)}
+          />
+          <input
+            type="text"
+            className="settings-input"
+            placeholder="Base URL (e.g., http://localhost:11434)"
+            value={ollamaBaseUrl}
+            onChange={(e) => setOllamaBaseUrl(e.target.value)}
+          />
+          <span className="settings-hint">Ollama runs locally without API keys. Ensure Ollama is running at the specified URL.</span>
+        </div>
+        <div className="ai-provider-group">
           <h4>Cartesia</h4>
           <input
             type="password"
@@ -244,6 +304,8 @@ function AiProviderSettings() {
           >
             <option value="anthropic">Anthropic</option>
             <option value="openai">OpenAI / Compatible</option>
+            <option value="google">Google (PaLM/Vertex)</option>
+            <option value="ollama">Ollama (Local)</option>
           </select>
         </div>
         <div className="ai-provider-group">
