@@ -15,6 +15,73 @@ All notable changes to ClickyX are documented here.
 
 ---
 
+## [0.1.4] - 2026-07-08
+
+### Added — Ollama & Google LLM Providers
+
+- **Ollama Local LLM**: Full integration with Ollama HTTP API for completely offline LLM support
+  - Supports llama2, mistral, neural-chat, orca, and all Ollama models
+  - Zero API keys required; runs entirely on your machine
+  - Configuration: Model name + Base URL (default: http://localhost:11434)
+  - Automatic routing: Models with "llama", "mistral" auto-detect as Ollama provider
+  - New UI section in Settings → AI Providers → Ollama (Local)
+
+- **Google PaLM / Vertex AI**: Native support for Google's Generative AI API
+  - Support for text-bison-001 and compatible models
+  - Configuration: Google API key + base URL
+  - New UI section in Settings → AI Providers → Google (PaLM / Vertex)
+  - Includes system prompt customization
+
+- **E2E Visual Test Suites**: Production-ready Playwright test coverage
+  - Visual baseline snapshots with regression detection
+  - Fixed DOM selectors (aria-controls/id alignment)
+  - CommandPalette CSS class for stable test selection
+  - HomeTab default chat visibility for integration tests
+  - All 90 unit tests passing; E2E visual tests updated
+
+- **Documentation**: Complete setup and upgrade guides
+  - `OLLAMA.md`: Comprehensive Ollama installation, configuration, and troubleshooting
+  - `UPDATE.md`: User-friendly upgrade instructions and new feature summary
+  - `CHANGELOG.md`: Detailed release notes for each version
+  - `update.json`: Machine-readable manifest for Tauri updater compatibility
+
+### Fixed
+
+- **Rust Build**: Resolved missing `base_url` field in SttConfig initialization
+- **STT Configuration**: Added optional base_url support for flexible endpoint configuration
+- **Unused Warnings**: Cleaned up base64::Engine and unused loop variable warnings
+
+### Changed
+
+- **AiConfig Structure**: Extended with `ollama_model` and `ollama_base_url` fields
+- **Provider Selection**: Default Provider dropdown now includes Ollama option
+- **Frontend Types**: Updated TypeScript bindings for new Ollama/Google config fields
+- **Build Output**: Generated Windows installers (NSIS + MSI) with bundled changes
+
+### Testing
+
+✅ **Unit Tests**: 90/90 passing (vitest)  
+✅ **E2E Tests**: Playwright visual tests with updated baselines  
+✅ **Cargo Check**: Compiles without errors (3 non-blocking warnings)  
+✅ **Frontend Build**: Vite production build successful (~1.8 MB gzipped)  
+✅ **Windows Build**: Tauri NSIS installer (~4.9 MB) generated and tested  
+
+### Installation & Upgrade
+
+- **New Install**: Download `ClickyX_0.1.4_x64-setup.exe` from Releases
+- **Upgrade**: Run installer over previous version; config is preserved
+- **Post-Install**: 
+  - For Ollama: Install via https://ollama.com, run `ollama serve`, then configure in Settings
+  - For Google: Get API key from Google Cloud Console, add to Settings
+
+### Known Limitations
+
+- Ollama: Streaming mode not yet implemented (non-streaming works perfectly)
+- Google: Vision/image understanding not yet implemented
+- Tauri Auto-Updater: Endpoint configuration pending (manual updates available for now)
+
+---
+
 ## [0.1.3] - 2026-06-06
 
 ### Added — Offline Local System TTS
