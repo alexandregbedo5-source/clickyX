@@ -6,7 +6,7 @@ use futures_util::stream::Stream;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
-use tauri.emitter
+use tauri::emitter
 use crate::screen::capture;
 
 #[derive(Clone)]
