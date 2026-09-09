@@ -1,0 +1,8 @@
+# Dépendances d'entraînement (Google Colab / poste avec GPU).
+# Installation : pip install -r requirements.txt -r requirements-training.txt
+torch>=2.2
+torchvision>=0.17
+timm>=0.9.12
+onnx>=1.15
+scikit-learn>=1.4
+tqdm>=4.66

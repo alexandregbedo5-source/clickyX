@@ -25,3 +25,25 @@ Thumbs.db
 *.tmp
 # Universal
 .vscode/
+
+# --- Module IA Forensics (Python) : ai_detector / training / model ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+/runs/
+/checkpoints/
+*.pt
+*.pth
+*.ckpt
+/data/
+/datasets/
+model/*.onnx
+!model/detector.onnx
+model/*.onnx.data
+.ipynb_checkpoints/
+.env

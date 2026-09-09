@@ -1,0 +1,9 @@
+# Dépendances d'exécution (inférence locale, hors ligne).
+# Installation : pip install -r requirements.txt
+numpy>=1.26
+scipy>=1.11
+pillow>=10.0
+onnxruntime>=1.17
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
