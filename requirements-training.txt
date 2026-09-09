@@ -6,3 +6,6 @@ timm>=0.9.12
 onnx>=1.15
 scikit-learn>=1.4
 tqdm>=4.66
+# Données : matérialisation de Community Forensics-Small (training/commfor.py)
+pyarrow>=14
+huggingface_hub>=0.20
