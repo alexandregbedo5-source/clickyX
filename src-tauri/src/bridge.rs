@@ -110,6 +110,38 @@ async fn health() -> HttpResponse {
     })
 }
 
+async fn offline_status() -> HttpResponse {
+    HttpResponse::Ok().json(crate::offline::status())
+}
+
+fn json_content_to_text(content: &serde_json::Value) -> String {
+    if let Some(s) = content.as_str() {
+        return s.to_string();
+    }
+    content.to_string()
+}
+
+async fn local_bridge_chat(
+    messages: Vec<(String, serde_json::Value)>,
+    model: &str,
+    system: Option<&str>,
+) -> Result<String, String> {
+    let mut mapped = Vec::new();
+    if let Some(sys) = system {
+        mapped.push(crate::ai::ChatMessage {
+            role: "system".into(),
+            content: sys.to_string(),
+        });
+    }
+    for (role, content) in messages {
+        mapped.push(crate::ai::ChatMessage {
+            role,
+            content: json_content_to_text(&content),
+        });
+    }
+    crate::offline::chat_local(&mapped, model).await
+}
+
 async fn toggle_panel(data: web::Data<BridgeState>) -> HttpResponse {
     let app = &data.app_handle;
     if let Some(window) = app.get_webview_window("main") {
@@ -468,6 +500,31 @@ async fn proxy_messages(
         }
     };
 
+    if crate::offline::prefer_local_chat(&config.ai.default_provider, &config.ai.openai_base_url) {
+        let model = body
+            .model
+            .clone()
+            .unwrap_or_else(|| config.offline.default_llm.clone());
+        let pairs = body
+            .messages
+            .iter()
+            .map(|m| (m.role.clone(), m.content.clone()))
+            .collect();
+        return match local_bridge_chat(pairs, &model, body.system.as_deref()).await {
+            Ok(text) => HttpResponse::Ok().json(serde_json::json!({
+                "id": "offline-local",
+                "type": "message",
+                "role": "assistant",
+                "model": model,
+                "content": [{ "type": "text", "text": text }],
+            })),
+            Err(e) => HttpResponse::BadGateway().json(ErrorResponse {
+                error: "offline_provider_error".into(),
+                message: e,
+            }),
+        };
+    }
+
     let api_key = match &config.ai.anthropic_api_key {
         Some(k) => k.clone(),
         None => {
@@ -564,6 +621,34 @@ async fn proxy_responses(
         }
     };
 
+    if crate::offline::prefer_local_chat(&config.ai.default_provider, &config.ai.openai_base_url) {
+        let model = body
+            .model
+            .clone()
+            .unwrap_or_else(|| config.offline.default_llm.clone());
+        let pairs = body
+            .messages
+            .iter()
+            .map(|m| (m.role.clone(), m.content.clone()))
+            .collect();
+        return match local_bridge_chat(pairs, &model, None).await {
+            Ok(text) => HttpResponse::Ok().json(serde_json::json!({
+                "id": "offline-local",
+                "object": "chat.completion",
+                "model": model,
+                "choices": [{
+                    "index": 0,
+                    "message": { "role": "assistant", "content": text },
+                    "finish_reason": "stop"
+                }]
+            })),
+            Err(e) => HttpResponse::BadGateway().json(ErrorResponse {
+                error: "offline_provider_error".into(),
+                message: e,
+            }),
+        };
+    }
+
     let api_key = match &config.ai.openai_api_key {
         Some(k) => k.clone(),
         None => {
@@ -645,7 +730,7 @@ async fn proxy_responses(
 
 async fn list_models() -> HttpResponse {
     let catalog = crate::ai::catalog::ModelCatalog::new();
-    let models: Vec<serde_json::Value> = catalog
+    let mut models: Vec<serde_json::Value> = catalog
         .models
         .iter()
         .map(|m| {
@@ -657,6 +742,19 @@ async fn list_models() -> HttpResponse {
             })
         })
         .collect();
+
+    if crate::offline::is_offline() {
+        models.retain(|m| m.get("provider").and_then(|v| v.as_str()) == Some("ollama"));
+    }
+    let local = crate::offline::models::ModelManager::new().scan().await;
+    for m in local.models.into_iter().filter(|m| m.installed) {
+        models.push(serde_json::json!({
+            "id": m.id,
+            "provider": m.provider,
+            "name": m.display_name,
+            "capabilities": ["chat", "streaming"],
+        }));
+    }
 
     HttpResponse::Ok().json(ModelsResponse { models })
 }
@@ -1321,6 +1419,7 @@ async fn run_bridge_server(
             .app_data(data.clone())
             .app_data(auth_config.clone())
             .route("/health", web::get().to(health))
+            .route("/offline/status", web::get().to(offline_status))
             .route("/panel/toggle", web::post().to(toggle_panel))
             .route("/v1/messages", web::post().to(proxy_messages))
             .route("/v1/responses", web::post().to(proxy_responses))

@@ -4,6 +4,7 @@ use std::path::PathBuf;
 use tauri::AppHandle;
 
 use crate::ai::AiConfig;
+use crate::offline::storage::OfflineConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
@@ -254,6 +255,7 @@ pub struct AppConfig {
     pub type_mode: TypeModeConfig,
     pub bridge_token: Option<String>,
     pub onboarding_completed: bool,
+    pub offline: OfflineConfig,
 }
 
 impl Default for AppConfig {
@@ -279,6 +281,7 @@ impl Default for AppConfig {
             type_mode: TypeModeConfig::default(),
             bridge_token: None,
             onboarding_completed: false,
+            offline: OfflineConfig::default(),
         }
     }
 }
