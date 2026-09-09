@@ -1,197 +1,126 @@
-# ClickyX
+# ClickyX — AI Image Detector (module IA Forensics)
 
-[![CI/CD](https://github.com/unn-Known1/clickyX/actions/workflows/ci.yml/badge.svg)](https://github.com/unn-Known1/clickyX/actions/workflows/ci.yml)
-[![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20Linux%20%7C%20macOS-blue)](https://github.com/unn-Known1/clickyX/releases)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Tauri v2](https://img.shields.io/badge/Tauri-v2-orange)](https://tauri.app)
-[![Rust](https://img.shields.io/badge/rust-stable-blueviolet)](https://www.rust-lang.org)
-[![Local-First](https://img.shields.io/badge/local--first-yes-success)]()
-[![Telemetry](https://img.shields.io/badge/telemetry-none-success)]()
+Moteur de **forensic numérique local** qui estime la probabilité qu'une image ait été
+générée par une IA. Il ne s'agit pas d'un simple classificateur : trois analyses
+indépendantes — **spectre fréquentiel (FFT)**, **bruit résiduel du capteur** et
+**réseau de neurones (ONNX)** — sont fusionnées en une estimation probabiliste
+explicable. Tout s'exécute **hors ligne**, sur CPU, sous Windows, Linux et macOS.
 
-> Cross-platform AI desktop companion — voice, screen context, cursor overlay, background agents, computer use, and a local HTTP bridge. Runs on Windows, Linux, and macOS. Zero cloud dependency.
-
----
-
-## What is ClickyX?
-
-ClickyX is a **Rust + Tauri + React** reimplementation of [HeyClicky](https://github.com/farzaa/clicky) (the leading macOS-only AI desktop companion by Farza Majeed, YC W26) — built from scratch to run natively on all three major desktop platforms with no subscription, no telemetry, and no hosted services.
-
-It is not a chatbot. It is a **runtime**: system-tray UI, transparent per-screen overlay, `localhost:32123` HTTP bridge, Codex agent runtime, computer-use engine, automation scheduler, and a full skill system — all user-owned and locally operated.
-
----
-
-## Quick Start
-
-```sh
-git clone https://github.com/unn-Known1/clickyX.git
-cd clickyX
-npm install
-npm run tauri dev        # hot-reload dev mode
-npm test                 # Vitest unit tests
-npm run tauri build      # production binary
-```
-
-Artifacts land in `src-tauri/target/release/bundle/`:
-- **Windows** — `.msi` and `.exe`
-- **macOS** — `.dmg` and `.app`
-- **Linux** — `.deb` and `.AppImage`
-
----
-
-## Feature Overview
-
-| Category | What's included |
-|----------|----------------|
-| **Voice** | Push-to-talk (key-capture, 5 presets), always-on VAD with barge-in suppression, wake word "Hey Clicky", STT (Deepgram/Whisper/AssemblyAI), TTS (ElevenLabs/Cartesia/Edge/Deepgram Aura/OpenAI Realtime/**System TTS — offline, no key**), drag-to-rotate voice-discovery orbit picker |
-| **Screen** | All-monitor / cursor / focused-window capture via `xcap`, auto-capture with diff detection, coordinate normalization, multi-monitor per-screen overlay routing |
-| **Overlay** | Animated bezier-arc cursor, 5-ring active-control glow, calibration box, rectangles, scribbles, captions, streaming text bubble, real-amplitude waveform, agent dock, HIGHLIGHT/SHAPE annotation tags, display hotplug detection; pet sprite visible only during active AI operations |
-| **Agents** | Codex Node.js sidecar, session lifecycle, floating HUD window, 63 bundled skills, voice-agent handoff, file drag-drop onto cards |
-| **Computer Use** | `enigo`-based click/double-click/scroll/type/key on all platforms; background mode (no cursor warp); app-specific CUA context injection |
-| **Chat** | react-markdown + syntax highlighting, conversation sidebar, per-session stream scoping, draft persistence, stop/cancel, drag-drop images, model selector filtered to configured providers |
-| **Connections** | Google Workspace (status shown, OAuth2 setup required), MCP CRUD (real stdio JSON-RPC), automation cron/interval + run history, app usage log |
-| **Bridge API** | 25+ endpoints on `localhost:32123` — REST + SSE, token auth, CORS, Anthropic/OpenAI proxy, MCP tool routing (full reference: `docs/BRIDGE_API.md`) |
-| **Automations** | Cron + interval scheduling, JSON persistence, agent binding, run history |
-| **3D Generation** | Tripo3D API + Three.js GLB orbit viewer |
-| **Theming** | 6 named accent variants, system/light/dark, semantic CSS tokens |
-| **i18n** | EN, ES, FR, JA via i18next |
-| **Tests** | Vitest unit + Playwright E2E + Playwright visual regression |
-
----
-
-## Architecture
+Ce module est développé sur la branche `feature/ai-image-detector` du projet
+[ClickyX](https://github.com/alexandregbedo5-source/clickyX) (hackathon, équipe de 3).
+Il ne touche ni aux composants React, ni aux providers offline : il expose un
+**contrat d'API** (`POST /detect-ai-image`) consommé par l'interface et par
+l'intégration locale. Documentation complète : [`docs/ai_detector.md`](docs/ai_detector.md).
 
 ```
-┌───────────────────────────────────────────────────────┐
-│  System Tray + Floating Panel + Per-Screen Overlay    │
-│  React 19 · Zustand · react-query · i18next           │
-├───────────────────────────────────────────────────────┤
-│  Rust Backend (src-tauri/src/)                        │
-│  audio/   VAD · STT · TTS · wake word · handoff        │
-│  ai/      Anthropic · OpenAI · guidance tag parser    │
-│  agent/   Codex · sessions · 63 skills · dock         │
-│  screen/  xcap · auto-capture · coordinates           │
-│  overlay/ cursors · glow · lifecycle · screen router  │
-│  cua.rs   enigo input (native + background mode)      │
-│  bridge.rs  HTTP API 127.0.0.1:32123                  │
-│  permissions  real TCC/registry/pactl checks          │
-│  automation/  cron + interval scheduler               │
-├───────────────────────────────────────────────────────┤
-│  Frontend (src/)                                      │
-│  App.tsx · AppContext · appStore (Zustand)            │
-│  bindings.ts — typed invoke() wrappers                │
-│  hooks/ useConfig · useAgents (react-query)            │
-│  overlay/ OverlayApp — glow · waveform · dock         │
-└───────────────────────────────────────────────────────┘
+Image → Prétraitement → Analyse fréquentielle → Bruit résiduel → CNN (ONNX) → Fusion → Score final
 ```
 
----
+## Démarrage rapide
 
-## Configuration
+```bash
+python -m venv .venv && source .venv/bin/activate      # Windows : .venv\Scripts\activate
+pip install -r requirements.txt                          # inférence (numpy, scipy, pillow, onnxruntime, fastapi)
+pip install -e .                                         # rend `ai_detector` importable + commande `ai-detector`
 
-Auto-created on first run:
+python -m ai_detector detect photo.jpg                   # rapport lisible
+python -m ai_detector detect photo.jpg --json            # contrat v1 strict (5 champs)
+python -m ai_detector serve                              # API sur http://127.0.0.1:32188 (docs : /docs)
+```
 
-| Platform | Path |
-|----------|------|
-| Linux | `~/.config/clickyx/config.json` |
-| macOS | `~/Library/Application Support/clickyx/config.json` |
-| Windows | `%APPDATA%/clickyx/config.json` |
-
-Full schema: [docs/CONFIGURATION.md](docs/CONFIGURATION.md)
-
----
-
-## AI Providers
-
-Configure keys in **Settings → AI Providers**:
-
-| Provider | Key format | Notes |
-|----------|-----------|-------|
-| Anthropic | `sk-ant-...` | Claude models |
-| OpenAI | `sk-proj-...` | GPT + realtime voice |
-| ElevenLabs | `xi-...` | TTS |
-| Deepgram | `dg-...` | STT WebSocket |
-| AssemblyAI | — | STT HTTP |
-| NVIDIA / OpenRouter | any | Set custom Base URL under OpenAI section |
-
----
-
-## External HTTP Bridge
-
-`localhost:32123` — compatible with OpenClicky's spec.
-
-```sh
-# Health check
-curl http://localhost:32123/health
-
-# Capture screen and get base64 image
-curl -X POST http://localhost:32123/screenshot \
-     -H "x-openclicky-token: YOUR_TOKEN"
-
-# Show cursor at coordinates
-curl -X POST http://localhost:32123/cursor \
+```bash
+curl -X POST http://127.0.0.1:32188/detect-ai-image \
      -H "Content-Type: application/json" \
-     -d '{"x": 500, "y": 300, "label": "here"}'
+     -d '{"image_path": "/chemin/vers/image.png"}'
 ```
 
-Full endpoint reference: [docs/BRIDGE_API.md](docs/BRIDGE_API.md)
-
----
-
-## Build & Test
-
-```sh
-npm install                      # install JS deps
-npm run build                    # tsc + vite (frontend)
-npm test                         # Vitest unit tests
-npm run test:e2e                 # Playwright E2E
-npm run test:visual              # visual regression
-npm run test:visual:update       # update baselines
-cargo check                      # Rust compile check
-cargo test --all-features        # Rust unit tests
-npm run tauri build              # full production binary
+```json
+{
+  "is_ai_generated": true,
+  "confidence": 0.92,
+  "fft_score": 0.81,
+  "noise_score": 0.73,
+  "cnn_score": 0.95
+}
 ```
 
----
+## Contenu du dépôt
 
-## Documentation
+| Chemin | Rôle |
+|---|---|
+| `ai_detector/` | Moteur d'inférence : `preprocessing`, `frequency`, `noise`, `cnn`, `fusion`, `detector`, `server` (FastAPI), `cli` |
+| `ai_detector/contracts/` | Contrat partagé : JSON Schema + types TypeScript (`ai_detector.d.ts`) |
+| `training/` | `train.py`, `evaluate.py`, `export_onnx.py`, `calibrate_fusion.py`, `data.py`, `transforms.py`, `model.py` |
+| `training/colab/ai_detector_colab.ipynb` | Notebook Google Colab complet (données → entraînement → export → calibration) |
+| `model/detector.onnx` | Modèle ONNX **(placeholder de signature, non entraîné — voir ci-dessous)** + `model_card.json` |
+| `docs/ai_detector.md` | Architecture détaillée, datasets, protocole d'entraînement, rapport de performances, contrat d'API |
+| `tests/` | 48 tests pytest (modules, API, CLI, matérialisation des données, pipeline d'entraînement de bout en bout sur CPU) |
 
-| File | Purpose |
-|------|---------|
-| [docs/PROJECT_SPEC.md](docs/PROJECT_SPEC.md) | Full feature specification, architecture, implementation details |
-| [docs/CONFIGURATION.md](docs/CONFIGURATION.md) | Complete config schema reference |
-| [docs/BRIDGE_API.md](docs/BRIDGE_API.md) | `localhost:32123` endpoint reference |
-| [docs/SETUP.md](docs/SETUP.md) | Developer environment setup |
-| [AGENTS.md](AGENTS.md) | AI coding agent instructions for this codebase |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contribution guidelines |
-| [SECURITY.md](SECURITY.md) | Security policy |
+## État du modèle CNN
 
----
+Le fichier versionné `model/detector.onnx` est un **placeholder** qui garantit le contrat
+d'entrée/sortie ONNX (`image[N,3,224,224] → logit[N,1]`, métadonnées `trained=false`).
+Le moteur le détecte et **exclut le CNN de la fusion** : les scores proviennent alors des
+indices physiques seuls (mode `handcrafted`, signalé par `GET /health` et le champ
+`warnings`). L'entraînement réel s'effectue sur Google Colab avec le notebook fourni ;
+`training/export_onnx.py` produit ensuite un `detector.onnx` entraîné (`trained=true`)
+qui active automatiquement la fusion complète.
 
-## Contributing
+> **Modèle v1.0.0 entraîné (9 septembre 2026).** Un `efficientnet_b0` (16 Mo) a été entraîné
+> via le notebook : **AUC 0,978** en validation (générateurs jamais vus) et **AUC 0,954** sur
+> AIGenImages2026 (19 modèles 2024–2025 jamais vus), robustesse AUC ≥ 0,94 sous JPEG /
+> redimensionnement / flou. Détails dans `docs/ai_detector.md` § 9.3.1. Une fois ce fichier
+> déposé dans `model/detector.onnx` (binaire, commité via Git normal — 16 Mo, LFS non requis),
+> le détecteur passe en mode `full`.
 
-Pull requests, bug reports, and feature requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+## Entraînement (Colab ou poste GPU)
 
-1. Fork the repo
-2. Create a branch: `git checkout -b feat/your-feature`
-3. Commit: `git commit -m 'feat: add ...'`
-4. Push and open a PR against `master`
+```bash
+pip install -r requirements-training.txt
+python -m training.data build-manifest --ai-dir DATA/ai --real-dir DATA/real --group-by-generator --out DATA/manifest.csv
+python training/train.py --data-root DATA/manifest.csv --layout manifest --arch efficientnet_b0 --epochs 8 --amp
+python training/evaluate.py --checkpoint runs/detector/best.pt --data-root DATA/manifest.csv --layout manifest --split val --robustness jpeg75 resize0.5
+python training/export_onnx.py --checkpoint runs/detector/best.pt --out model/detector.onnx --version 1.0.0
+python training/calibrate_fusion.py --data-root DATA/manifest.csv --layout manifest --split val --onnx model/detector.onnx --out model/calibration.json
+```
 
----
+## Tests
 
-## License
+```bash
+pip install -e ".[dev,training]"
+pytest
+```
 
-[MIT](LICENSE) — free for personal and commercial use.
+## Configuration (variables d'environnement)
 
----
+| Variable | Défaut | Rôle |
+|---|---|---|
+| `AI_DETECTOR_MODEL_PATH` | `model/detector.onnx` | Modèle ONNX |
+| `AI_DETECTOR_CALIBRATION_PATH` | `model/calibration.json` | Paramètres de calibration (défauts intégrés si absent) |
+| `AI_DETECTOR_HOST` / `AI_DETECTOR_PORT` | `127.0.0.1` / `32188` | Adresse d'écoute du serveur |
+| `AI_DETECTOR_TOKEN` | — | Si défini, exige l'en-tête `x-ai-detector-token` |
+| `AI_DETECTOR_THREADS` | `0` (auto) | Threads ONNX Runtime |
 
-## Acknowledgments
+## Intégration dans ClickyX
 
-- **Farza Majeed** — for [HeyClicky](https://github.com/farzaa/clicky) (YC W26), the design and feature reference for ClickyX
-- **Jason Kneen** — for [OpenClicky](https://github.com/jasonkneen/openclicky), which defined the `localhost:32123` bridge contract
-- **OpenAI Codex team** — for the cross-platform Node.js agent runtime
-- **Tauri team** — for making cross-platform native desktop apps in Rust practical
+Tous les fichiers de ce module vivent dans des chemins nouveaux (`ai_detector/`, `training/`,
+`model/`, `docs/ai_detector.md`, `tests/*.py`, `pyproject.toml`, `requirements*.txt`) afin
+d'être fusionnés sans conflit avec `feature/offline-engine` et `feature/local-ai-ui`.
+Le seul fichier commun est `.gitignore`, dont les entrées Python sont ajoutées sans doublon.
 
----
+Le script `scripts/integrate_into_clickyx.py` fait tout en une commande (clone si besoin,
+branche `feature/ai-image-detector` créée depuis `master`, copie des chemins ci-dessus,
+fusion du `.gitignore`, vérification que rien n'est ignoré par git, commit, push) :
 
-<p align="center"><sub>Built with Rust + Tauri + React · Run anywhere · Owned by you</sub></p>
+```bash
+# depuis la racine de ce dépôt, avec l'environnement Python activé
+python scripts/integrate_into_clickyx.py --clone --push          # clone ClickyX dans ./clickyX
+python scripts/integrate_into_clickyx.py --target ../clickyX --push   # clone déjà présent
+python scripts/integrate_into_clickyx.py --target ../clickyX --dry-run  # voir sans modifier
+```
+
+Options utiles : `--run-tests` (lance pytest dans le dépôt cible avant de commiter),
+`--no-commit`, `--allow-dirty`. Le script est idempotent : relancé après une mise à jour du
+module, il ne commite que les différences.
+
+Le contenu de ce README est repris dans `docs/ai_detector.md`, qui reste la référence.

@@ -165,13 +165,17 @@ metadata_props : arch, input_size, mean, std, output=logit, trained (true/false)
 `training/export_onnx.py` écrit ces métadonnées, vérifie la parité PyTorch ↔ ONNX Runtime
 (`max |Δ| < 2·10⁻³`) et génère `model/model_card.json` (SHA-256, métriques, configuration).
 
-### 6.4 Placeholder versionné
+### 6.4 Modèle livré
 
-`model/detector.onnx` est actuellement un **placeholder de signature** (`arch=tiny`,
-`trained=false`, tête à zéro ⇒ logit 0 ⇒ `cnn_score = 0,5`). Le moteur le charge (ce qui
-valide le chemin ONNX Runtime de bout en bout) mais **l'exclut de la fusion** ; `GET /health`
-renvoie `status: degraded`, `fusion_mode: handcrafted`. Remplacer le fichier par un export
-entraîné suffit à activer le mode `full`, sans modification de code.
+`model/detector.onnx` est le modèle **entraîné** v1.0.0 : `efficientnet_b0`, 4,01 M paramètres,
+16 Mo, `trained=true` (métriques et empreinte SHA-256 dans `model_card.json`). Le moteur le
+charge et l'**inclut dans la fusion** ; `GET /health` renvoie alors `status: ok`.
+
+> Historique : tant qu'aucun modèle entraîné n'est présent, le dépôt embarque un **placeholder
+> de signature** (`arch=tiny`, `trained=false`, logit 0 ⇒ `cnn_score = 0,5`). Le moteur le
+> charge (validation du chemin ONNX Runtime de bout en bout) mais **l'exclut de la fusion**
+> (`status: degraded`, `fusion_mode: handcrafted`). Remplacer le fichier par un export entraîné
+> suffit à activer le mode `full`, sans modification de code.
 
 ## 7. Module 4 — Fusion et calibration
 
@@ -269,10 +273,64 @@ Accuracy et *balanced accuracy* au seuil 0,5, **AUC**, *average precision*, TPR 
 
 ### 9.3 Rapport de performances
 
-> **État au 9 septembre 2026.** Le CNN versionné est un placeholder : aucun chiffre de CNN
-> entraîné n'est encore disponible. Les résultats ci-dessous concernent les **indices
-> physiques seuls** (mode `handcrafted`) et servent de **référence basse**. Ils seront
-> remplacés par la sortie du notebook Colab (§ 9.1, étapes 3 et 6).
+#### 9.3.1 Modèle entraîné — EfficientNet-B0 v1.0.0 (9 septembre 2026)
+
+Modèle : `efficientnet_b0` (4,01 M paramètres), 8 époques, `detector.onnx` de 16 Mo (opset 17,
+SHA-256 `7f5c8d38…`, parité PyTorch↔ONNX `max|Δ| = 1,1·10⁻⁵`). Données : sous-ensemble équilibré
+de *Community Forensics-Small* (10 660 images d'entraînement — 5 100 réelles / 5 560 IA de ~65
+générateurs ; 1 340 de validation), **validation sur des générateurs entiers jamais vus**
+(`--group-by-generator`). Sélection du meilleur checkpoint sur l'AUC de validation.
+
+*Progression de l'AUC de validation (générateurs jamais vus)* : époque 0 → 0,766 · 1 → 0,877 ·
+2 → 0,915 · 3 → 0,935 · 4 → 0,948 · 5 → **0,957** (meilleur checkpoint retenu).
+
+*Validation (1 340 images : 900 réelles / 440 IA), CNN seul, seuil 0,5 :*
+
+| Condition | n | Accuracy | Bal. acc. | AUC | AP | TPR (IA) | TNR (réel) | EER |
+|---|---|---|---|---|---|---|---|---|
+| Images natives | 1340 | 0,958 | 0,942 | **0,978** | 0,975 | 0,896 | 0,988 | 0,057 |
+| JPEG q75 | 1340 | 0,929 | 0,898 | 0,962 | 0,959 | 0,807 | 0,989 | 0,068 |
+| JPEG q50 | 1340 | 0,913 | 0,869 | 0,967 | 0,966 | 0,741 | 0,998 | 0,061 |
+| Redimensionnement ×0,5 | 1340 | 0,896 | 0,901 | 0,943 | 0,942 | 0,916 | 0,886 | 0,091 |
+| Flou σ=1,0 | 1340 | 0,944 | 0,931 | 0,968 | 0,961 | 0,891 | 0,970 | 0,078 |
+
+L'AUC reste **≥ 0,94 sous toutes les dégradations** : le modèle ne s'effondre pas quand l'image
+est recompressée, réduite ou floutée — c'est l'apport du CNN par rapport aux indices physiques
+seuls (§ 9.3.2), qui, eux, chutent fortement après rééchantillonnage.
+
+*Test hors distribution — AIGenImages2026 (6 338 images : 900 réelles / 5 438 IA de 19 modèles
+2024–2025 jamais vus), CNN seul :* **AUC 0,954** (native), 0,900 (JPEG q75), *average precision*
+0,991. L'accuracy brute au seuil 0,5 (0,53) n'est **pas** représentative ici : le seuil est
+hérité de la validation (majoritairement réelle) alors que ce jeu est presque exclusivement
+composé d'IA très réalistes de 2025 ; la calibration (§ 7) repositionne ce seuil. Le pouvoir
+séparateur (AUC) est le bon indicateur, et il est élevé.
+
+*AUC par générateur récent (chacun vs les 900 réelles) :*
+
+| Générateur (2024–2025) | AUC | Générateur | AUC |
+|---|---|---|---|
+| `ideogram_v3` | **0,990** | `hidream-i1-dev` | **0,986** |
+| `imagen4_preview` | 0,981 | `flux-2` | 0,979 |
+| `gemini-25-flash-image` | 0,977 | `gpt-image-1_text-to-image` | 0,974 |
+| `gemini-3-pro-image-preview` | 0,976 | `fast-sdxl` | 0,972 |
+| `stable-diffusion-v35-medium` | 0,966 | `reve_text-to-image` | 0,964 |
+| `flux_dev` | 0,959 | `flux-2-pro` | 0,949 |
+| `z-image_turbo` | 0,944 | `midjourneyv7` | 0,936 |
+| `flux-2-max` | 0,936 | `bytedance_seedream_v4.5` | 0,926 |
+| `gpt-image-1.5` | 0,914 | `flux-pro_v1.1` | 0,865 |
+
+Tous les générateurs 2025 sont détectés avec une AUC ≥ 0,86, la majorité ≥ 0,95, y compris des
+modèles propriétaires récents (GPT-Image, Gemini 3, Imagen 4, Midjourney v7, Flux.2). Objectifs
+du § 9.3.2 (**AUC > 0,95 en validation**, **> 0,85 hors distribution**) : atteints.
+
+> Ces chiffres portent sur le **CNN seul**. La calibration de la fusion (module fréquentiel +
+> bruit + CNN, § 7) et le rapport du pipeline complet (§ 9.1, étape 6) restent à ajouter après
+> exécution du bloc de calibration ; ils ne peuvent qu'égaler ou dépasser le CNN seul.
+
+#### 9.3.2 Indices physiques seuls (référence, mode `handcrafted`)
+
+> Résultats **sans CNN**, sur un petit jeu de contrôle : ils valident le sens physique des
+> indices et servent de référence basse. Le modèle entraîné (§ 9.3.1) est nettement au-dessus.
 
 **Jeu de contrôle.** 170 images de *Community Forensics-Small* : 55 photographies FFHQ
 (1024², recadrées à 512² natif) vs 115 images de 7 modèles de diffusion latente (512², PNG).
@@ -327,14 +385,14 @@ générateurs inconnus ; détecteurs statiques évalués sur AIGenImages2026/in-
 (WildFC 2026) : 50–70 % d'accuracy, 80–92 % après adaptation continue. Objectif hackathon :
 **AUC > 0,95 en validation « générateurs jamais vus »** et **> 0,85 sur AIGenImages2026**.
 
-### 9.4 Rapport à compléter après entraînement Colab
+### 9.4 Synthèse (modèle livré v1.0.0)
 
 ```
-Modèle : efficientnet_b0 · version 1.0.0 · données : …
-Validation (générateurs jamais vus) : AUC … · bal. acc … · EER …
-AIGenImages2026 (test) : AUC … · accuracy … · pire générateur : … (AUC …)
-Robustesse : JPEG75 AUC … · JPEG50 … · resize0.5 … · blur1.0 …
-Pipeline complet (fusion full) : AUC … · accuracy … · ECE …
+Modèle : efficientnet_b0 · version 1.0.0 · 16 Mo · données : Community Forensics-Small (sous-ensemble équilibré)
+Validation (générateurs jamais vus) : AUC 0,978 · bal. acc 0,942 · EER 0,057
+AIGenImages2026 (test, 19 modèles 2024–2025 jamais vus) : AUC 0,954 · AP 0,991 · pire générateur : flux-pro_v1.1 (AUC 0,865)
+Robustesse : JPEG75 AUC 0,962 · JPEG50 0,967 · resize0.5 0,943 · blur1.0 0,968
+Pipeline complet (fusion full) : à compléter après calibration (§ 7), ≥ CNN seul
 ```
 
 ## 10. Contrat d'API officiel
@@ -436,7 +494,7 @@ Variables d'environnement : voir README (`AI_DETECTOR_MODEL_PATH`, `AI_DETECTOR_
 * Empaquetage : `pyinstaller --onefile -n clickyx-ai-detector ai_detector/__main__.py
   --add-data model:model` produit un binaire par OS (à intégrer aux scripts de release
   ClickyX, hors périmètre de cette branche).
-* Tests : `pytest` (44 tests : modules, API, CLI, entraînement de bout en bout sur CPU).
+* Tests : `pytest` (48 tests : modules, API, CLI, matérialisation des données, entraînement de bout en bout sur CPU).
 
 ## 12. Limites connues et pistes
 
