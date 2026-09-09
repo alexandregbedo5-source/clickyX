@@ -253,7 +253,7 @@ sur le jeu de contrôle du § 9.
 
 ### 9.1 Étapes (notebook `training/colab/ai_detector_colab.ipynb`)
 
-1. **Données** : matérialisation Community Forensics-Small (streaming HF → dossiers `real/`, `ai/<modèle>/`), téléchargement AIGenImages2026, construction des manifests (`training/data.py build-manifest`).
+1. **Données** : matérialisation Community Forensics-Small par `training/commfor.py` (liste fixe de fichiers parquet couvrant diffusion latente/GAN/diffusion pixel et COCO/VISION/Landscapes HQ/FFHQ, un fichier à la fois dans un sous-processus, images écrites telles quelles → dossiers `real/<source>/`, `ai/<modèle>/`), téléchargement AIGenImages2026, construction des manifests (`training/data.py build-manifest`). Le streaming `datasets` est à proscrire : chaque parquet est un row group unique de ~3 000 images (jusqu'à 4 Go) et les fichiers sont triés par classe.
 2. **Entraînement** : `train.py --arch efficientnet_b0 --epochs 8 --batch-size 64 --lr 3e-4 --amp --freeze-backbone-epochs 1 --ema 0.999` (≈ 25–40 min sur T4 pour 12 K images ; adapter `--max-train-samples`).
 3. **Évaluation** : `evaluate.py --checkpoint … --robustness jpeg75 jpeg50 resize0.5 blur1.0` sur la validation, puis sur AIGenImages2026.
 4. **Export** : `export_onnx.py --checkpoint best.pt --out model/detector.onnx --version 1.0.0`.
