@@ -1,0 +1,525 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clickyx.local/contracts/detect-ai-image.schema.json",
+  "title": "ClickyX AI Image Detector — contrat POST /detect-ai-image",
+  "contract_version": "1.0",
+  "endpoint": {
+    "method": "POST",
+    "path": "/detect-ai-image",
+    "default_base_url": "http://127.0.0.1:32188"
+  },
+  "$defs": {
+    "DetectAiImageRequest": {
+      "description": "Entrée : un chemin local **ou** (extension additive) une image en base64.",
+      "properties": {
+        "image_path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Chemin absolu (ou relatif au serveur) vers l'image à analyser.",
+          "examples": [
+            "C:/Users/alex/Pictures/photo.jpg",
+            "/home/alex/img.png"
+          ],
+          "title": "Image Path"
+        },
+        "image_base64": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Extension v1.1 : image encodée en base64 (data-URL acceptée). Alternative à image_path.",
+          "title": "Image Base64"
+        },
+        "include_details": {
+          "default": true,
+          "description": "Extension v1.1 : inclure le bloc `details` (caractéristiques, contributions, temps).",
+          "title": "Include Details",
+          "type": "boolean"
+        }
+      },
+      "title": "DetectAiImageRequest",
+      "type": "object"
+    },
+    "DetectAiImageResponse": {
+      "additionalProperties": false,
+      "description": "Sortie. Les cinq premiers champs constituent le contrat v1 figé.",
+      "properties": {
+        "is_ai_generated": {
+          "description": "Verdict binaire : confidence ≥ seuil (0.5 par défaut).",
+          "title": "Is Ai Generated",
+          "type": "boolean"
+        },
+        "confidence": {
+          "description": "Probabilité estimée que l'image soit générée par IA.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "fft_score": {
+          "description": "Score du module fréquentiel (0 = photo, 1 = synthèse).",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Fft Score",
+          "type": "number"
+        },
+        "noise_score": {
+          "description": "Score du module bruit résiduel.",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Noise Score",
+          "type": "number"
+        },
+        "cnn_score": {
+          "description": "Score du réseau de neurones (0.5 neutre si indisponible).",
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Cnn Score",
+          "type": "number"
+        },
+        "contract_version": {
+          "default": "1.0",
+          "description": "Version du contrat de sortie.",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Version du modèle ONNX utilisé, si chargé.",
+          "title": "Model Version"
+        },
+        "warnings": {
+          "description": "Avertissements de fiabilité (codes stables).",
+          "items": {
+            "type": "string"
+          },
+          "title": "Warnings",
+          "type": "array"
+        },
+        "details": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DetectionDetails"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Explicabilité : caractéristiques et contributions."
+        }
+      },
+      "required": [
+        "is_ai_generated",
+        "confidence",
+        "fft_score",
+        "noise_score",
+        "cnn_score"
+      ],
+      "title": "DetectAiImageResponse",
+      "type": "object"
+    },
+    "ErrorResponse": {
+      "properties": {
+        "error": {
+          "$ref": "#/$defs/ErrorBody"
+        }
+      },
+      "required": [
+        "error"
+      ],
+      "title": "ErrorResponse",
+      "type": "object"
+    },
+    "HealthResponse": {
+      "properties": {
+        "status": {
+          "enum": [
+            "ok",
+            "degraded"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "service": {
+          "default": "clickyx-ai-detector",
+          "title": "Service",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        },
+        "contract_version": {
+          "default": "1.0",
+          "title": "Contract Version",
+          "type": "string"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelStatus"
+        },
+        "calibration_version": {
+          "title": "Calibration Version",
+          "type": "string"
+        },
+        "fusion_mode": {
+          "enum": [
+            "full",
+            "handcrafted"
+          ],
+          "title": "Fusion Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "version",
+        "model",
+        "calibration_version",
+        "fusion_mode"
+      ],
+      "title": "HealthResponse",
+      "type": "object"
+    },
+    "CnnDetails": {
+      "properties": {
+        "available": {
+          "title": "Available",
+          "type": "boolean"
+        },
+        "trained": {
+          "title": "Trained",
+          "type": "boolean"
+        },
+        "arch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arch"
+        },
+        "model_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model Version"
+        },
+        "crops": {
+          "default": 0,
+          "title": "Crops",
+          "type": "integer"
+        },
+        "crop_scores": {
+          "items": {
+            "type": "number"
+          },
+          "title": "Crop Scores",
+          "type": "array"
+        },
+        "padded": {
+          "default": false,
+          "title": "Padded",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "available",
+        "trained"
+      ],
+      "title": "CnnDetails",
+      "type": "object"
+    },
+    "DetectionDetails": {
+      "properties": {
+        "image": {
+          "$ref": "#/$defs/ImageInfo"
+        },
+        "frequency": {
+          "$ref": "#/$defs/ModuleDetails"
+        },
+        "noise": {
+          "$ref": "#/$defs/ModuleDetails"
+        },
+        "cnn": {
+          "$ref": "#/$defs/CnnDetails"
+        },
+        "fusion": {
+          "$ref": "#/$defs/FusionDetails"
+        },
+        "timings_ms": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Timings Ms",
+          "type": "object"
+        },
+        "calibration_version": {
+          "title": "Calibration Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "image",
+        "frequency",
+        "noise",
+        "cnn",
+        "fusion",
+        "timings_ms",
+        "calibration_version"
+      ],
+      "title": "DetectionDetails",
+      "type": "object"
+    },
+    "FusionDetails": {
+      "properties": {
+        "mode": {
+          "enum": [
+            "full",
+            "handcrafted"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "threshold": {
+          "title": "Threshold",
+          "type": "number"
+        },
+        "weights": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Weights",
+          "type": "object"
+        },
+        "logit_contributions": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Logit Contributions",
+          "type": "object"
+        },
+        "verdict_confidence": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Verdict Confidence",
+          "type": "number"
+        }
+      },
+      "required": [
+        "mode",
+        "threshold",
+        "weights",
+        "logit_contributions",
+        "verdict_confidence"
+      ],
+      "title": "FusionDetails",
+      "type": "object"
+    },
+    "ImageInfo": {
+      "properties": {
+        "width": {
+          "title": "Width",
+          "type": "integer"
+        },
+        "height": {
+          "title": "Height",
+          "type": "integer"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "has_exif": {
+          "default": false,
+          "title": "Has Exif",
+          "type": "boolean"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "source"
+      ],
+      "title": "ImageInfo",
+      "type": "object"
+    },
+    "ModuleDetails": {
+      "description": "Caractéristiques brutes et contributions (logit) d'un module hand-crafted.",
+      "properties": {
+        "features": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Features",
+          "type": "object"
+        },
+        "contributions": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Contributions",
+          "type": "object"
+        }
+      },
+      "required": [
+        "features",
+        "contributions"
+      ],
+      "title": "ModuleDetails",
+      "type": "object"
+    },
+    "ErrorBody": {
+      "properties": {
+        "code": {
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorBody",
+      "type": "object"
+    },
+    "ModelStatus": {
+      "properties": {
+        "loaded": {
+          "title": "Loaded",
+          "type": "boolean"
+        },
+        "trained": {
+          "title": "Trained",
+          "type": "boolean"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Path"
+        },
+        "arch": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Arch"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Version"
+        },
+        "input_size": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input Size"
+        },
+        "providers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Providers",
+          "type": "array"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        }
+      },
+      "required": [
+        "loaded",
+        "trained"
+      ],
+      "title": "ModelStatus",
+      "type": "object"
+    }
+  }
+}
