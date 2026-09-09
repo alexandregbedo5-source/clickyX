@@ -2,9 +2,12 @@ import { useState, useEffect } from "react";
 import { invoke, listen } from "../bindings";
 import { useStore } from "../store/appStore";
 import type { AutoCaptureStatus, TodayStats } from "../bindings";
+import { useAppContext } from "../context/AppContext";
+import { OfflineIndicator } from "../ui/local-ai";
 
 export default function StatusBar() {
   const { audioStatus, audioLevel, attentionItems, setAudioStatus, setAudioLevel, setAttentionItems, todayStats, setTodayStats } = useStore();
+  const { setActiveTab } = useAppContext();
   const [acStatus, setAcStatus] = useState<AutoCaptureStatus | null>(null);
 
   // Auto-capture: event-driven + fallback poll
@@ -68,6 +71,16 @@ export default function StatusBar() {
         <AudioMeter level={audioLevel} active={isListening} />
         <span className="status-bar-label">{isListening ? "Listening" : "Idle"}</span>
       </div>
+
+      <div className="status-bar-divider" />
+
+      <OfflineIndicator
+        compact
+        onOpenSettings={() => {
+          setActiveTab("settings");
+          window.setTimeout(() => window.__paletteSection?.("offline"), 160);
+        }}
+      />
 
       <div className="status-bar-divider" />
 

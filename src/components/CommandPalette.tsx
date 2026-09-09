@@ -26,6 +26,8 @@ export default function CommandPalette({ onClose, onNavigate }: Props) {
     { id: "nav-settings",    label: "Go to Settings",    description: "Open the Settings tab",    action: () => onNavigate("settings"),    category: "Navigation" },
     { id: "nav-settings-voice",    label: "Voice Settings",    description: "Settings › Voice",          action: () => { onNavigate("settings"); window.__paletteSection?.("voice"); },        category: "Settings" },
     { id: "nav-settings-ai",       label: "AI Providers",      description: "Settings › AI Providers",   action: () => { onNavigate("settings"); window.__paletteSection?.("providers"); },    category: "Settings" },
+    { id: "nav-settings-offline",  label: "Offline settings",  description: "Settings › Offline",        action: () => { onNavigate("settings"); window.__paletteSection?.("offline"); },      category: "Settings" },
+    { id: "nav-detect-ai",         label: "Detect AI image",   description: "Settings › AI Detection",   action: () => { onNavigate("settings"); window.__paletteSection?.("ai_detect"); },    category: "Actions" },
     { id: "nav-settings-general",  label: "General Settings",  description: "Settings › General",        action: () => { onNavigate("settings"); window.__paletteSection?.("general"); },     category: "Settings" },
     { id: "nav-settings-system",   label: "System & Logs",     description: "Settings › System & Logs", action: () => { onNavigate("settings"); window.__paletteSection?.("system"); },      category: "Settings" },
     { id: "nav-settings-perm",     label: "Permissions",       description: "Settings › Permissions",   action: () => { onNavigate("settings"); window.__paletteSection?.("permissions"); }, category: "Settings" },
