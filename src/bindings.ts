@@ -65,8 +65,8 @@ export function invoke<T>(cmd: string, args?: any): Promise<T> {
         google_api_key: null,
         google_model: "text-bison-001",
         google_base_url: "https://generativelanguage.googleapis.com",
-        ollama_model: "llama2",
-        ollama_base_url: "http://localhost:11434",
+        ollama_model: "llama3.2:1b",
+        ollama_base_url: "http://127.0.0.1:11434",
         default_provider: "anthropic",
         system_prompt: "",
       }) as any;

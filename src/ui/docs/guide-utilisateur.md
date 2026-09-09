@@ -43,7 +43,7 @@ Ces boutons appellent `offline_status`, `get_offline_config` et `update_offline_
 ### Pour que le chat marche sans réseau
 
 1. Installer [Ollama](https://ollama.com) **une fois, en ligne**.
-2. `ollama serve` puis `ollama pull llama3.2`
+2. `ollama serve` puis `ollama pull llama3.2:1b`
 3. Couper le réseau et vérifier que l’indicateur passe à Local / Offline.
 4. Parler à ClickyX : la requête doit rester en local.
 

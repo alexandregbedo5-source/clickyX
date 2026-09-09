@@ -38,7 +38,7 @@ export const DEFAULT_OFFLINE_CONFIG: OfflineConfig = {
   whisper_base_url: "http://127.0.0.1:8090",
   whisper_cli: null,
   whisper_model: "base",
-  default_llm: "llama3.2",
+  default_llm: "llama3.2:1b",
   probe_timeout_ms: 400,
 };
 

@@ -12,6 +12,7 @@ import { useAppContext } from "../context/AppContext";
 import { useQuery } from "@tanstack/react-query";
 import { invoke } from "../bindings";
 import type { AiConfig } from "../bindings";
+import { preferLocalChat } from "../ui/local-ai/ollama";
 
 const DRAFT_KEY = "clickyx_chat_draft";
 
@@ -205,10 +206,15 @@ function ChatTab({ initialText }: { initialText?: string }) {
   // Derive default model from saved config when it loads
   useEffect(() => {
     if (!aiConfig || selectedModel) return;
-    const defaultModel =
-      aiConfig.default_provider === "openai"
+    const useLocal =
+      preferLocalChat() || (typeof window !== "undefined" && !("__TAURI_INTERNALS__" in window));
+    const defaultModel = useLocal
+      ? aiConfig.ollama_model || "llama3.2:1b"
+      : aiConfig.default_provider === "openai"
         ? aiConfig.openai_model || "gpt-4o"
-        : aiConfig.anthropic_model || "claude-sonnet-4-20250514";
+        : aiConfig.default_provider === "ollama"
+          ? aiConfig.ollama_model || "llama3.2:1b"
+          : aiConfig.anthropic_model || "claude-sonnet-4-20250514";
     setSelectedModel(defaultModel);
   }, [aiConfig, selectedModel]);
 

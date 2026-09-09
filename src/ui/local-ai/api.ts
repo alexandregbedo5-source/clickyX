@@ -5,6 +5,7 @@ import {
   DEFAULT_OFFLINE_CONFIG,
   DETECT_TIMEOUT_MS,
 } from "./constants";
+import { probeOllama } from "./ollama";
 import { loadOfflineOverlay, loadUiSettings, saveOfflineOverlay } from "./settings";
 import type {
   DetectAiImageRequest,
@@ -145,7 +146,7 @@ async function invokeSafe<T>(cmd: string, args?: Record<string, unknown>): Promi
 export async function getOfflineStatus(): Promise<OfflineStatus> {
   const fromEngine = await invokeSafe<OfflineStatus>("offline_status");
   if (fromEngine && fromEngine.connectivity) {
-    return { ...fromEngine, source: "engine" };
+    return enrichWithLocalProbes({ ...fromEngine, source: "engine" });
   }
 
   try {
@@ -161,7 +162,7 @@ export async function getOfflineStatus(): Promise<OfflineStatus> {
     /* browser fallback below */
   }
 
-  return browserOfflineStatus();
+  return enrichWithLocalProbes(await browserOfflineStatus());
 }
 
 export async function refreshOfflineStatus(): Promise<OfflineStatus> {
@@ -197,21 +198,32 @@ export async function listLocalModels(): Promise<ModelInventory> {
   );
 }
 
-function browserOfflineStatus(): OfflineStatus {
+async function browserOfflineStatus(): Promise<OfflineStatus> {
   const overlay = loadOfflineOverlay();
   const wan = typeof navigator === "undefined" ? true : navigator.onLine;
   const force = overlay.force_offline === true;
+  const ollama = await probeOllama(overlay.ollama_base_url || DEFAULT_OFFLINE_CONFIG.ollama_base_url);
   const blocks = force || !wan;
+  const connectivity = blocks ? (ollama ? "local_only" : "offline") : "online";
   return {
-    connectivity: blocks ? "offline" : "online",
+    connectivity,
     force_offline: force,
     auto_fallback: overlay.auto_fallback ?? true,
     wan_reachable: wan,
-    ollama_reachable: false,
+    ollama_reachable: ollama,
     whisper_reachable: false,
     blocks_wan: blocks,
-    last_probe_ms: 0,
+    last_probe_ms: Date.now(),
     data_dir: "",
     source: "browser",
   };
+}
+
+async function enrichWithLocalProbes(status: OfflineStatus): Promise<OfflineStatus> {
+  if (status.ollama_reachable) return status;
+  const ollama = await probeOllama();
+  if (!ollama) return status;
+  const connectivity =
+    status.blocks_wan || status.force_offline || !status.wan_reachable ? "local_only" : status.connectivity;
+  return { ...status, ollama_reachable: true, connectivity };
 }
