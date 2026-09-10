@@ -12,20 +12,132 @@ Il ne touche ni aux composants React, ni aux providers offline : il expose un
 **contrat d'API** (`POST /detect-ai-image`) consommé par l'interface et par
 l'intégration locale. Documentation complète : [`docs/ai_detector.md`](docs/ai_detector.md).
 
+> **Branche d'intégration.** Sur la branche d'intégration, ce module est assemblé avec
+> l'**interface locale** (Honorat) et le **moteur hors ligne** (Tybiane) pour former
+> l'application ClickyX complète : l'écran **AI Detector** appelle le détecteur sur
+> `127.0.0.1:32188`, le bridge hors ligne tourne sur `127.0.0.1:32123`. Procédure d'assemblage,
+> contrats et lancement de bout en bout : [`docs/INTEGRATION.md`](docs/INTEGRATION.md).
+
 ```
 Image → Prétraitement → Analyse fréquentielle → Bruit résiduel → CNN (ONNX) → Fusion → Score final
 ```
 
-## Démarrage rapide
+## Prérequis
+
+| Outil | Version recommandée | Nécessaire pour | Vérifier |
+|---|---|---|---|
+| **Python** | **3.11 ou 3.12** (voir avertissement ci-dessous) | Le détecteur IA (`ai_detector`) | `python --version` |
+| **Node.js** | **18 LTS ou 20 LTS** + npm | L'interface ClickyX | `node --version` |
+| **Rust** (stable) | dernière stable via [rustup](https://rustup.rs) | **Uniquement** `npm run tauri dev` (app de bureau). Inutile pour `npm run dev` (web) | `rustc --version` |
+
+> ⚠️ **Python 3.13 / 3.14 ne sont pas supportés.** L'écosystème ML (`onnxruntime`,
+> `protobuf`) ne publie pas encore de paquets (« wheels ») pour ces versions trop récentes.
+> Symptôme : `pip install -r requirements.txt` échoue avec
+> `ResolutionImpossible` / `no matching distributions available ... protobuf`, et le venv
+> apparaît vide (`ModuleNotFoundError: No module named 'numpy'`).
+> **Utilisez Python 3.11 ou 3.12.** Voir [Dépannage installation](#dépannage-installation).
+
+## Installation complète (pas à pas)
+
+> **Chaque commande se lance séparément, sur sa propre ligne.** Les mots « puis » / « ensuite »
+> ne sont pas des commandes — ne les tapez pas. Taper `npm install puis npm run dev` provoque
+> l'erreur `npm error 404 ... GET .../puis`.
+
+### 1. Récupérer le projet
 
 ```bash
-python -m venv .venv && source .venv/bin/activate      # Windows : .venv\Scripts\activate
-pip install -r requirements.txt                          # inférence (numpy, scipy, pillow, onnxruntime, fastapi)
-pip install -e .                                         # rend `ai_detector` importable + commande `ai-detector`
+git clone https://github.com/alexandregbedo5-source/clickyX.git
+```
+```bash
+cd clickyX
+```
+```bash
+git checkout master
+```
+```bash
+git pull origin master
+```
 
+### 2. Détecteur IA (Python)
+
+Créer un environnement virtuel isolé **avec Python 3.11 ou 3.12** :
+
+```bash
+python -m venv .venv
+```
+
+L'activer :
+
+```bash
+# Windows (PowerShell)
+.venv\Scripts\Activate.ps1
+```
+```bash
+# Linux / macOS
+source .venv/bin/activate
+```
+
+> Windows : si PowerShell refuse d'exécuter le script d'activation
+> (« exécution de scripts désactivée »), lancer d'abord
+> `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, puis réactiver.
+
+Mettre pip à jour, puis installer les dépendances :
+
+```bash
+python -m pip install --upgrade pip
+```
+```bash
+python -m pip install -r requirements.txt
+```
+```bash
+python -m pip install -e .
+```
+
+Vérifier que tout est bien installé :
+
+```bash
+python -c "import numpy, onnxruntime, fastapi; print('OK', numpy.__version__)"
+```
+
+### 3. Interface ClickyX (Node)
+
+Dans un **autre terminal** (à la racine du projet) :
+
+```bash
+npm install
+```
+
+### 4. Rust (optionnel — uniquement pour l'app de bureau)
+
+Nécessaire seulement si vous voulez lancer `npm run tauri dev`. Installer depuis
+[rustup.rs](https://rustup.rs), puis vérifier `rustc --version`. Sinon, `npm run dev`
+(interface web) fonctionne **sans Rust**.
+
+## Démarrage rapide (une fois installé)
+
+Deux services dans **deux terminaux distincts** (laisser les deux ouverts).
+
+**Terminal 1 — le détecteur** (venv activé) :
+
+```bash
+python -m ai_detector serve              # API sur http://127.0.0.1:32188 (docs : /docs)
+```
+
+**Terminal 2 — l'application** :
+
+```bash
+npm run dev                              # interface web (rapide, sans Rust)
+```
+```bash
+npm run tauri dev                        # app de bureau complète (nécessite Rust)
+```
+
+Autres usages du détecteur en ligne de commande :
+
+```bash
 python -m ai_detector detect photo.jpg                   # rapport lisible
 python -m ai_detector detect photo.jpg --json            # contrat v1 strict (5 champs)
-python -m ai_detector serve                              # API sur http://127.0.0.1:32188 (docs : /docs)
+python -m ai_detector info                               # état du modèle + fusion_mode
 ```
 
 ```bash
@@ -94,6 +206,58 @@ python training/calibrate_fusion.py --data-root DATA/manifest.csv --layout manif
 pip install -e ".[dev,training]"
 pytest
 ```
+
+## Dépannage installation
+
+Contraintes rencontrées et leurs solutions (surtout sous Windows).
+
+| Symptôme / message d'erreur | Cause | Solution |
+|---|---|---|
+| `pip install -r requirements.txt` échoue avec `ResolutionImpossible` et `no matching distributions available ... protobuf` ; les paquets téléchargés sont en `cp313`/`cp314` | **Python trop récent** (3.13 / 3.14). `onnxruntime` et `protobuf` n'ont pas encore de wheels pour ces versions | Recréer le venv avec **Python 3.11 ou 3.12** (voir ci-dessous). |
+| `ModuleNotFoundError: No module named 'numpy'` en lançant `python -m ai_detector serve` | Les dépendances ne sont pas installées (souvent parce que l'install précédente a échoué à cause du point ci-dessus) | Corriger la version de Python, puis relancer `python -m pip install -r requirements.txt`. |
+| `No suitable Python runtime found` après `py -3.12 -m venv .venv` | Python 3.12 n'est pas installé sur la machine | Installer Python 3.12 (voir ci-dessous), puis recréer le venv. |
+| `.venv\Scripts\Activate.ps1 ... l'exécution de scripts est désactivée` (PowerShell) | Politique d'exécution PowerShell restrictive | `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`, puis réactiver le venv. |
+| `pip` / `python` n'utilise pas le venv (installe ailleurs) | venv non activé, ou mauvais `pip` global | Réactiver le venv ; utiliser `python -m pip ...` (et non `pip ...`) ; vérifier avec `python -m pip --version` (le chemin doit contenir `.venv`). |
+| `npm error 404 ... GET .../puis` (ou `.../ensuite`) | Le mot de liaison « puis » a été tapé comme une commande | Lancer chaque commande **séparément**, une par ligne. |
+| `rustc: command not found` / erreur lors de `npm run tauri dev` | Rust n'est pas installé | Installer Rust ([rustup.rs](https://rustup.rs)), **ou** utiliser `npm run dev` (web, sans Rust). |
+| `Cannot reach the local service` dans l'UI (onglet AI Detector) | Le détecteur n'est pas démarré | Lancer `python -m ai_detector serve` dans un terminal dédié avant d'utiliser l'onglet. |
+
+### Choisir / installer la bonne version de Python (Windows)
+
+Lister les versions déjà présentes :
+
+```bash
+py -0p
+```
+
+- **Si `3.12` ou `3.11` apparaît**, recréer le venv avec cette version :
+
+```bash
+deactivate
+```
+```bash
+Remove-Item -Recurse -Force .venv
+```
+```bash
+py -3.12 -m venv .venv
+```
+```bash
+.venv\Scripts\Activate.ps1
+```
+```bash
+python -m pip install --upgrade pip
+```
+```bash
+python -m pip install -r requirements.txt
+```
+
+- **Si vous n'avez que Python 3.13 / 3.14**, installer Python 3.12 depuis
+  [python.org/downloads](https://www.python.org/downloads/release/python-3129/)
+  (installeur Windows 64-bit). **Cocher « Add python.exe to PATH »** pendant l'installation,
+  puis reprendre les commandes ci-dessus avec `py -3.12`.
+
+> Le guide d'intégration [`docs/INTEGRATION.md`](docs/INTEGRATION.md) reprend ces pièges du
+> point de vue « application complète » (interface + moteur hors ligne + détecteur).
 
 ## Configuration (variables d'environnement)
 
