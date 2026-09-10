@@ -47,6 +47,16 @@ fn current_platform_key() -> String {
 }
 
 pub async fn check_for_updates(current_version: &str) -> Result<UpdateInfo, String> {
+    if crate::offline::blocks_wan() {
+        return Ok(UpdateInfo {
+            available: false,
+            version: None,
+            release_notes: None,
+            download_url: None,
+            delta_available: None,
+            delta_url: None,
+        });
+    }
     let platform = current_platform_key();
     let url = format!(
         "https://releases.clickyx.app/{}/{}",

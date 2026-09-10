@@ -1,0 +1,434 @@
+/* Local AI UI — scoped to .lai-* so it does not leak into the rest of the panel. */
+
+.lai-view {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  height: 100%;
+}
+
+.lai-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.lai-nav-btn {
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 4px 9px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.lai-nav-btn.active,
+.lai-nav-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.lai-nav-btn.active {
+  background: var(--color-info-bg);
+}
+
+.lai-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.lai-title {
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.lai-copy {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.lai-drop {
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius);
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  text-align: center;
+  padding: 14px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 12px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.lai-drop:hover,
+.lai-drop-active {
+  border-color: var(--accent);
+  background: var(--color-info-bg);
+  color: var(--text-primary);
+}
+
+.lai-drop input {
+  display: none;
+}
+
+.lai-preview {
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+}
+
+.lai-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.lai-row-spread {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.lai-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.lai-btn {
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.lai-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.lai-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.lai-btn-danger {
+  color: var(--color-error-text);
+  border-color: var(--color-error-border);
+}
+
+.lai-error {
+  font-size: 12px;
+  color: var(--color-error-text);
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+.lai-health {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.lai-health-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.lai-health-ok .lai-health-dot { background: var(--color-success); }
+.lai-health-degraded .lai-health-dot { background: var(--color-warning); }
+.lai-health-unreachable .lai-health-dot { background: var(--color-danger); }
+
+.lai-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.lai-progress-label,
+.lai-progress-pct {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.lai-progress-pct {
+  text-align: right;
+}
+
+.lai-progress-track,
+.lai-score-track {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--bg-primary);
+  overflow: hidden;
+}
+
+.lai-progress-fill,
+.lai-score-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: inherit;
+  transition: width 0.16s ease;
+}
+
+.lai-progress-fill-indeterminate {
+  width: 36%;
+  animation: lai-indet 1.1s ease-in-out infinite;
+}
+
+@keyframes lai-indet {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(320%); }
+}
+
+.lai-verdict {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--color-muted-bg);
+}
+
+.lai-verdict-ai { background: var(--color-warning-bg); }
+.lai-verdict-photo { background: var(--color-success-bg); }
+.lai-verdict-uncertain { background: var(--color-info-bg); }
+
+.lai-verdict-kicker {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.lai-verdict-title {
+  font-size: 16px;
+  color: var(--text-primary);
+}
+
+.lai-verdict-conf {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.lai-verdict-compact {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.lai-score {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.lai-score-head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.lai-score-value {
+  color: var(--text-primary);
+}
+
+.lai-history {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.lai-history-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: inherit;
+  border-radius: var(--radius-sm);
+  padding: 6px;
+  cursor: pointer;
+}
+
+.lai-history-item:hover {
+  border-color: var(--accent);
+}
+
+.lai-thumb {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--bg-surface);
+  flex-shrink: 0;
+}
+
+.lai-thumb-empty {
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.lai-history-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.lai-history-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lai-history-sub {
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.lai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.lai-field input[type="text"],
+.lai-field input[type="password"],
+.lai-field input[type="number"],
+.lai-field select {
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.lai-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.lai-help h4 {
+  font-size: 12px;
+  margin: 8px 0 4px;
+  color: var(--text-primary);
+}
+
+.lai-help p,
+.lai-help li {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.lai-help ul {
+  padding-left: 16px;
+}
+
+.lai-offline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.lai-offline-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.lai-offline-online .lai-offline-dot { background: var(--color-success); box-shadow: 0 0 4px var(--color-success); }
+.lai-offline-local_only .lai-offline-dot { background: var(--color-warning); box-shadow: 0 0 4px var(--color-warning); }
+.lai-offline-offline .lai-offline-dot { background: var(--color-danger); box-shadow: 0 0 4px var(--color-danger); }
+
+.lai-offline-forced {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.lai-status-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.lai-status-pill {
+  background: var(--bg-primary);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  font-size: 11px;
+}
+
+.lai-status-pill strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: 12px;
+}
+
+.lai-warn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--color-warning);
+}
+
+.lai-details {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.lai-details summary {
+  cursor: pointer;
+  color: var(--text-primary);
+}

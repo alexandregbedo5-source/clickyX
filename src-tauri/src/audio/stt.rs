@@ -6,12 +6,16 @@ pub enum SttProvider {
     OpenAIWhisper,
     AssemblyAI,
     Google,
+    LocalWhisper,
 }
 
 impl SttProvider {
     pub fn from_name(name: &str) -> Option<Self> {
         match name.to_lowercase().as_str() {
             "deepgram" => Some(Self::Deepgram),
+            "whisper-local" | "local-whisper" | "whisper_local" | "local_whisper" => {
+                Some(Self::LocalWhisper)
+            }
             "whisper" | "openai" => Some(Self::OpenAIWhisper),
             "assemblyai" => Some(Self::AssemblyAI),
             "google" | "gcp" => Some(Self::Google),
@@ -25,6 +29,7 @@ impl SttProvider {
             Self::OpenAIWhisper => "openai",
             Self::AssemblyAI => "assemblyai",
             Self::Google => "google",
+            Self::LocalWhisper => "whisper-local",
         }
     }
 }
@@ -80,6 +85,13 @@ pub async fn transcribe(
     config: &SttConfig,
     sample_rate: u32,
 ) -> Result<String, String> {
+    if config.provider == SttProvider::LocalWhisper
+        || crate::offline::is_offline()
+    {
+        return crate::offline::whisper::transcribe_pcm(audio_data, sample_rate, &config.language)
+            .await;
+    }
+
     if config.api_key.is_empty() && !config.base_url.as_ref().map_or(false, |u| u.contains("localhost") || u.contains("127.0.0.1")) {
         return Err(format!("No API key for provider {}", config.provider.name()));
     }
@@ -91,6 +103,9 @@ pub async fn transcribe(
         SttProvider::OpenAIWhisper => transcribe_whisper(&wav_bytes, config).await,
         SttProvider::AssemblyAI => transcribe_assemblyai(&wav_bytes, config).await,
         SttProvider::Google => Err("Google STT provider not implemented".into()),
+        SttProvider::LocalWhisper => {
+            crate::offline::whisper::transcribe_pcm(audio_data, sample_rate, &config.language).await
+        }
     }
 }
 

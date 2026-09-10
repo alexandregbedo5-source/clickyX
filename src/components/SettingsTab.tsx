@@ -5,6 +5,8 @@ import AiProviderSettings from "./SettingsSections/AiProviderSettings";
 import ComputerUseSettings from "./SettingsSections/ComputerUseSettings";
 import PermissionsSettings from "./SettingsSections/PermissionsSettings";
 import SystemSettings from "./SettingsSections/SystemSettings";
+import OfflineSettings from "./SettingsSections/OfflineSettings";
+import AiDetectSettings from "./SettingsSections/AiDetectSettings";
 import { Icon } from "./Icon";
 import type { IconName } from "./Icon";
 
@@ -12,7 +14,8 @@ const ModelGeneratorTab = lazy(() => import("./ModelGeneratorTab"));
 
 type SettingsTabId =
   | "general" | "voice" | "providers" | "computer_use"
-  | "permissions" | "agents" | "automations" | "system" | "3d_models";
+  | "permissions" | "agents" | "automations" | "system" | "3d_models"
+  | "offline" | "ai_detect";
 
 interface NavItem {
   id: SettingsTabId;
@@ -23,6 +26,8 @@ interface NavItem {
 const SETTINGS_TABS: NavItem[] = [
   { id: "general",      label: "General",       icon: "settings" },
   { id: "providers",    label: "AI Providers",  icon: "ai" },
+  { id: "offline",      label: "Offline",       icon: "shield" },
+  { id: "ai_detect",    label: "AI Detection",  icon: "eye" },
   { id: "voice",        label: "Voice & Audio", icon: "microphone" },
   { id: "computer_use", label: "Computer Use",  icon: "cursor" },
   { id: "permissions",  label: "Permissions",   icon: "shield" },
@@ -39,7 +44,7 @@ interface NavGroup {
 
 const NAV_GROUPS: NavGroup[] = [
   { label: "Appearance",  items: ["general"] },
-  { label: "AI & Voice",  items: ["providers", "voice"] },
+  { label: "AI & Voice",  items: ["providers", "offline", "ai_detect", "voice"] },
   { label: "Automation",  items: ["computer_use", "agents", "automations"] },
   { label: "System",      items: ["permissions", "system", "3d_models"] },
 ];
@@ -117,6 +122,8 @@ function SettingsTab({ onOpenAbout }: Props) {
           {activeSection === "general"      && <GeneralSettings />}
           {activeSection === "voice"        && <VoiceSettings />}
           {activeSection === "providers"    && <AiProviderSettings />}
+          {activeSection === "offline"      && <OfflineSettings />}
+          {activeSection === "ai_detect"    && <AiDetectSettings />}
           {activeSection === "computer_use" && <ComputerUseSettings />}
           {activeSection === "permissions"  && <PermissionsSettings />}
           {activeSection === "agents"       && (

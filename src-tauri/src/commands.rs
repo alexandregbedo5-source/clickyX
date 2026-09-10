@@ -124,8 +124,14 @@ pub fn update_config(app: AppHandle, partial: serde_json::Value) -> Result<AppCo
                 config.type_mode = t;
             }
         }
+        if let Some(offline) = obj.get("offline") {
+            if let Ok(o) = serde_json::from_value(offline.clone()) {
+                config.offline = o;
+            }
+        }
     }
     config::save_config(&app, &config)?;
+    crate::offline::bootstrap(config.offline.clone());
     crate::register_hotkeys(&app)?;
     
     if let Some(pipeline) = app.try_state::<Mutex<VoicePipeline>>() {
@@ -247,17 +253,42 @@ pub async fn send_chat_message(
         content: message,
     };
     let model = model.unwrap_or_else(|| {
-        ai::get_default_model(&config.ai, &config.ai.default_provider)
+        if crate::offline::prefer_local_chat(&config.ai.default_provider, &config.ai.openai_base_url) {
+            config.offline.default_llm.clone()
+        } else {
+            ai::get_default_model(&config.ai, &config.ai.default_provider)
+        }
     });
-    let provider = ai::create_provider_for_model(&config.ai, &model)
-        .map_err(|e| format!("{e}"))?;
-    let response = provider
-        .chat(&[msg], &model)
-        .await
-        .map_err(|e| format!("{e}"))?;
-        
+    let response = route_chat(&config, &[msg], &model).await?;
     execute_guidance_tags(&app, &response);
     Ok(response)
+}
+
+async fn route_chat(
+    config: &AppConfig,
+    messages: &[ai::ChatMessage],
+    model: &str,
+) -> Result<String, String> {
+    let prefer_local = crate::offline::prefer_local_chat(
+        &config.ai.default_provider,
+        &config.ai.openai_base_url,
+    );
+    if prefer_local {
+        return crate::offline::chat_local(messages, model).await;
+    }
+    match ai::create_provider_for_model(&config.ai, model) {
+        Ok(provider) => match provider.chat(messages, model).await {
+            Ok(text) => Ok(text),
+            Err(e) if config.offline.auto_fallback => crate::offline::chat_local(messages, model)
+                .await
+                .map_err(|local| format!("{e}; local fallback: {local}")),
+            Err(e) => Err(format!("{e}")),
+        },
+        Err(e) if config.offline.auto_fallback => crate::offline::chat_local(messages, model)
+            .await
+            .map_err(|local| format!("{e}; local fallback: {local}")),
+        Err(e) => Err(format!("{e}")),
+    }
 }
 
 fn execute_guidance_tags(app: &AppHandle, text: &str) {
@@ -309,11 +340,58 @@ pub async fn send_chat_message_stream(
         content: message,
     };
     let model = model.unwrap_or_else(|| {
-        ai::get_default_model(&config.ai, &config.ai.default_provider)
+        if crate::offline::prefer_local_chat(&config.ai.default_provider, &config.ai.openai_base_url) {
+            config.offline.default_llm.clone()
+        } else {
+            ai::get_default_model(&config.ai, &config.ai.default_provider)
+        }
     });
 
     let app_clone = app.clone();
     tokio::spawn(async move {
+        if crate::offline::prefer_local_chat(&config.ai.default_provider, &config.ai.openai_base_url)
+        {
+            let sid = session_id.clone();
+            let result = crate::offline::chat_local_stream(&[msg], &model, |delta| {
+                let _ = app_clone.emit(
+                    "stream-event",
+                    StreamEvent::TextDelta {
+                        text: delta.to_string(),
+                        session_id: sid.clone(),
+                    },
+                );
+            })
+            .await;
+            match result {
+                Ok(text) => {
+                    execute_guidance_tags(&app_clone, &text);
+                    let _ = app_clone.emit(
+                        "stream-event",
+                        StreamEvent::TextDone {
+                            text,
+                            session_id: session_id.clone(),
+                        },
+                    );
+                    let _ = app_clone.emit(
+                        "stream-event",
+                        StreamEvent::Done {
+                            session_id: session_id.clone(),
+                        },
+                    );
+                }
+                Err(e) => {
+                    let _ = app_clone.emit(
+                        "stream-event",
+                        StreamEvent::Error {
+                            message: e,
+                            session_id: session_id.clone(),
+                        },
+                    );
+                }
+            }
+            return;
+        }
+
         let provider = match ai::create_provider_for_model(&config.ai, &model) {
             Ok(p) => p,
             Err(e) => {
@@ -322,9 +400,50 @@ pub async fn send_chat_message_stream(
             }
         };
 
-        let mut receiver = match provider.chat_stream(&[msg], &model).await {
+        let mut receiver = match provider.chat_stream(&[msg.clone()], &model).await {
             Ok(r) => r,
             Err(e) => {
+                if config.offline.auto_fallback {
+                    let sid = session_id.clone();
+                    match crate::offline::chat_local_stream(&[msg], &model, |delta| {
+                        let _ = app_clone.emit(
+                            "stream-event",
+                            StreamEvent::TextDelta {
+                                text: delta.to_string(),
+                                session_id: sid.clone(),
+                            },
+                        );
+                    })
+                    .await
+                    {
+                        Ok(text) => {
+                            execute_guidance_tags(&app_clone, &text);
+                            let _ = app_clone.emit(
+                                "stream-event",
+                                StreamEvent::TextDone {
+                                    text,
+                                    session_id: session_id.clone(),
+                                },
+                            );
+                            let _ = app_clone.emit(
+                                "stream-event",
+                                StreamEvent::Done {
+                                    session_id: session_id.clone(),
+                                },
+                            );
+                        }
+                        Err(local) => {
+                            let _ = app_clone.emit(
+                                "stream-event",
+                                StreamEvent::Error {
+                                    message: format!("{e}; local fallback: {local}"),
+                                    session_id: session_id.clone(),
+                                },
+                            );
+                        }
+                    }
+                    return;
+                }
                 let _ = app_clone.emit("stream-event", StreamEvent::Error { message: e.to_string(), session_id: session_id.clone() });
                 return;
             }
@@ -355,7 +474,23 @@ pub async fn get_models(app: AppHandle, provider: Option<String>) -> Result<Vec<
     let mut catalog = ModelCatalog::new();
     let config = config::load_config(&app).unwrap_or_default();
     let ai_cfg = &config.ai;
-    if ai_cfg.openai_api_key.as_ref().map_or(false, |k| !k.is_empty()) {
+    let local = crate::offline::models::ModelManager::new().scan().await;
+    catalog.merge_remote(
+        local
+            .models
+            .into_iter()
+            .filter(|m| m.installed && matches!(m.kind, crate::offline::models::ModelKind::Llm))
+            .map(|m| ai::catalog::ModelInfo {
+                id: m.id,
+                provider: m.provider,
+                name: m.display_name,
+                capabilities: vec!["chat".into(), "streaming".into()],
+            })
+            .collect(),
+    );
+    let can_fetch_remote = !crate::offline::blocks_wan()
+        && ai_cfg.openai_api_key.as_ref().map_or(false, |k| !k.is_empty());
+    if can_fetch_remote {
         let remote = ModelCatalog::fetch_openai_compatible(&ai_cfg.openai_base_url, ai_cfg.openai_api_key.as_deref().unwrap_or("")).await;
         catalog.merge_remote(remote);
     }
@@ -426,13 +561,26 @@ pub async fn chat_with_vision(
         })
         .collect();
 
-    let provider = ai::create_provider_for_model(&config.ai, &model)
-        .map_err(|e| format!("{e}"))?;
-    let response = provider
-        .chat_with_vision(&[msg], &model, &image_inputs)
-        .await
-        .map_err(|e| format!("{e}"))?;
-        
+    let response = if crate::offline::prefer_local_chat(
+        &config.ai.default_provider,
+        &config.ai.openai_base_url,
+    ) {
+        let _ = &image_inputs;
+        crate::offline::chat_local(&[msg], &model).await?
+    } else {
+        let provider = ai::create_provider_for_model(&config.ai, &model)
+            .map_err(|e| format!("{e}"))?;
+        match provider
+            .chat_with_vision(&[msg.clone()], &model, &image_inputs)
+            .await
+        {
+            Ok(text) => text,
+            Err(e) if config.offline.auto_fallback => crate::offline::chat_local(&[msg], &model)
+                .await
+                .map_err(|local| format!("{e}; local fallback: {local}"))?,
+            Err(e) => return Err(format!("{e}")),
+        }
+    };
     execute_guidance_tags(&app, &response);
     Ok(response)
 }
@@ -689,7 +837,23 @@ pub fn transcribe_audio(
     let rt = tokio::runtime::Handle::try_current()
         .map_err(|e| format!("No tokio runtime: {e}"))?;
 
-    rt.block_on(async { crate::audio::transcribe(&audio_data, &stt_cfg, sample_rate).await })
+    rt.block_on(async {
+        if crate::offline::is_offline()
+            || matches!(stt_cfg.provider, crate::audio::SttProvider::LocalWhisper)
+        {
+            crate::offline::whisper::transcribe_pcm(&audio_data, sample_rate, &stt_cfg.language).await
+        } else {
+            match crate::audio::transcribe(&audio_data, &stt_cfg, sample_rate).await {
+                Ok(text) => Ok(text),
+                Err(e) if crate::offline::config().auto_fallback => {
+                    crate::offline::whisper::transcribe_pcm(&audio_data, sample_rate, &stt_cfg.language)
+                        .await
+                        .map_err(|local| format!("{e}; local fallback: {local}"))
+                }
+                Err(e) => Err(e),
+            }
+        }
+    })
 }
 
 #[tauri::command]
@@ -1136,6 +1300,7 @@ pub async fn generate_3d_model(
         .map(|k| k.key.clone())
         .ok_or_else(|| "Tripo3D API key not configured. Add it in Settings > API Keys.".to_string())?;
     let style = style.unwrap_or_else(|| "realistic".into());
+    crate::offline::guard_wan("3D generation")?;
     crate::gen3d::generate_3d(&prompt, &style, &api_key).await
 }
 
@@ -1164,6 +1329,16 @@ pub fn request_permission(permission: String) -> Result<bool, String> {
 #[tauri::command]
 pub async fn check_for_updates(app: AppHandle) -> Result<UpdateInfo, String> {
     let config = config::load_config(&app).unwrap_or_default();
+    if crate::offline::blocks_wan() {
+        return Ok(UpdateInfo {
+            available: false,
+            version: None,
+            release_notes: None,
+            download_url: None,
+            delta_available: None,
+            delta_url: None,
+        });
+    }
     updater::check_for_updates(&config.version).await
 }
 

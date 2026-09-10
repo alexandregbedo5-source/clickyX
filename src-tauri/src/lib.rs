@@ -17,6 +17,7 @@ mod permissions;
 mod cua;
 mod accessibility;
 mod type_mode;
+mod offline;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -172,6 +173,18 @@ pub fn run() {
             // Load config
             let config = config::load_config(&handle)?;
 
+            // Offline engine first so later startup work can skip WAN.
+            {
+                let mut offline_cfg = config.offline.clone();
+                if !config.ai.ollama_base_url.is_empty() {
+                    offline_cfg.ollama_base_url = config.ai.ollama_base_url.clone();
+                }
+                if !config.ai.ollama_model.is_empty() {
+                    offline_cfg.default_llm = config.ai.ollama_model.clone();
+                }
+                offline::bootstrap(offline_cfg);
+            }
+
             // Register default global hotkeys. Previously skipped on Windows
             // because invalid persisted shortcuts could crash the app. Now handled
             // with per-binding error logging so a single bad shortcut never blocks startup.
@@ -183,11 +196,19 @@ pub fn run() {
             let state = Mutex::new(commands::AppState::default());
             handle.manage(state);
 
-            // Initialize voice pipeline
-            let stt_provider = audio::SttProvider::from_name(&config.audio.stt_provider)
-                .unwrap_or(audio::SttProvider::Deepgram);
-            let tts_provider = audio::TtsProvider::from_name(&config.audio.tts_provider)
-                .unwrap_or(audio::TtsProvider::ElevenLabs);
+            // Initialize voice pipeline. Offline: local Whisper + system TTS, no cloud keys.
+            let stt_provider = if offline::is_offline() {
+                audio::SttProvider::LocalWhisper
+            } else {
+                audio::SttProvider::from_name(&config.audio.stt_provider)
+                    .unwrap_or(audio::SttProvider::Deepgram)
+            };
+            let tts_provider = if offline::is_offline() {
+                audio::TtsProvider::System
+            } else {
+                audio::TtsProvider::from_name(&config.audio.tts_provider)
+                    .unwrap_or(audio::TtsProvider::ElevenLabs)
+            };
 
             let stt_api_key = config
                 .api_keys
@@ -336,8 +357,8 @@ pub fn run() {
             let bridge_token = config.bridge_token.clone();
             bridge::start_bridge(handle.clone(), bridge_token);
 
-            // Check for updates on startup (non-blocking)
-            {
+            // Check for updates on startup (non-blocking). Skip entirely when offline.
+            if !offline::blocks_wan() {
                 let handle = app.handle().clone();
                 let version = config.version.clone();
                 tauri::async_runtime::spawn(async move {
@@ -351,6 +372,8 @@ pub fn run() {
                         Err(e) => log::warn!("Update check failed: {e}"),
                     }
                 });
+            } else {
+                log::info!("OfflineManager: skipping startup update check (WAN blocked)");
             }
 
             // Register deep-link handler for openclicky:// URLs (B-016)
@@ -500,6 +523,16 @@ pub fn run() {
             commands::set_agent_voice_triggers,
             commands::open_agent_hud,
             commands::agent_attach_files,
+            offline::commands::offline_status,
+            offline::commands::offline_refresh,
+            offline::commands::get_offline_config,
+            offline::commands::update_offline_config,
+            offline::commands::list_local_providers,
+            offline::commands::list_local_models,
+            offline::commands::download_local_model,
+            offline::commands::import_whisper_model,
+            offline::commands::ollama_health,
+            offline::commands::clear_offline_cache,
         ])
         .build(tauri::generate_context!())
         .expect("error while building ClickyX")

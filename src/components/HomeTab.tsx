@@ -1,9 +1,11 @@
 import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import ChatTab from "./ChatTab";
+import { LocalAiView } from "../views/LocalAiView";
 import { useAgents } from "../hooks/useAgents";
 import { agentStatusColor, agentStatusLabel } from "../utils/agentStatus";
 import { useAppContext } from "../context/AppContext";
+import "../ui/local-ai/local-ai.css";
 
 const DEFAULT_SUGGESTIONS = [
   "What's on my screen?",
@@ -60,6 +62,7 @@ function EmptyAgentsCTA({ onCreateAgent }: { onCreateAgent: () => void }) {
 
 function HomeTab() {
   const [showChat, setShowChat] = useState(true);
+  const [showDetect, setShowDetect] = useState(false);
   const [initialSuggestion, setInitialSuggestion] = useState<string | null>(null);
   const { agents, loading: agentsLoading } = useAgents();
   const { setActiveTab } = useAppContext();
@@ -92,12 +95,35 @@ function HomeTab() {
     }
   }, []);
 
+  if (showDetect) {
+    return (
+      <div className="home-tab">
+        <button className="home-back-btn" onClick={() => setShowDetect(false)} aria-label="Back to home">
+          ← Back
+        </button>
+        <LocalAiView initialScreen="detect" />
+      </div>
+    );
+  }
+
   if (showChat) {
     return (
       <div className="home-tab">
-        <button className="home-back-btn" onClick={() => setShowChat(false)} aria-label="Back to home">
-          ← Back
-        </button>
+        <div className="lai-row-spread">
+          <button className="home-back-btn" onClick={() => setShowChat(false)} aria-label="Back to home">
+            ← Back
+          </button>
+          <button
+            className="home-back-btn"
+            onClick={() => {
+              setShowChat(false);
+              setShowDetect(true);
+            }}
+            aria-label="Open AI image detection"
+          >
+            Detect AI
+          </button>
+        </div>
         <ChatTab initialText={initialSuggestion ?? undefined} />
       </div>
     );
@@ -118,6 +144,9 @@ function HomeTab() {
       </div>
       <button className="start-chat-btn" onClick={() => setShowChat(true)}>
         Start a conversation
+      </button>
+      <button className="start-chat-btn" onClick={() => setShowDetect(true)}>
+        Detect AI images
       </button>
 
       {/* F-026: Dynamic suggestion chips */}
