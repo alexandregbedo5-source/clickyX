@@ -203,6 +203,13 @@ Sans fichier, les défauts de `calibration_defaults.py` s'appliquent : ils encod
 physique des indices avec des poids modérés et des statistiques de normalisation observées
 sur le jeu de contrôle du § 9.
 
+**Calibration livrée v1.0.0.** Le dépôt embarque `model/calibration.json`
+(source `calib-2026-09-10`, ajustée sur la validation « générateurs jamais vus » de
+Community Forensics-Small, 360 images). AUC hors-pli (5 plis) : `fft_score` 0,920 ·
+`noise_score` 0,928 · `cnn` 1,000 · **fusion full 1,000**. Le moteur la charge automatiquement
+(`python -m ai_detector info` ⇒ `calibration.source = calib-2026-09-10`, `fusion_mode: full`),
+les défauts ne servant plus que de repli.
+
 ## 8. Datasets
 
 ### 8.1 Étude comparative
@@ -323,9 +330,13 @@ Tous les générateurs 2025 sont détectés avec une AUC ≥ 0,86, la majorité 
 modèles propriétaires récents (GPT-Image, Gemini 3, Imagen 4, Midjourney v7, Flux.2). Objectifs
 du § 9.3.2 (**AUC > 0,95 en validation**, **> 0,85 hors distribution**) : atteints.
 
-> Ces chiffres portent sur le **CNN seul**. La calibration de la fusion (module fréquentiel +
-> bruit + CNN, § 7) et le rapport du pipeline complet (§ 9.1, étape 6) restent à ajouter après
-> exécution du bloc de calibration ; ils ne peuvent qu'égaler ou dépasser le CNN seul.
+> Ces chiffres portent sur le **CNN seul**. La **fusion calibrée** (module fréquentiel + bruit +
+> CNN, § 7) est désormais **livrée** : `model/calibration.json` (source `calib-2026-09-10`,
+> validation « générateurs jamais vus ») donne des AUC hors-pli (5 plis) `fft_score` **0,920** ·
+> `noise_score` **0,928** · `cnn` **1,000** · **fusion full 1,000** sur le sous-ensemble de
+> validation (360 images). Le moteur charge cette calibration automatiquement
+> (`fusion_mode: full`, `calibration.source` ≠ `defaults`) ; la fusion ne peut qu'égaler ou
+> dépasser le CNN seul.
 
 #### 9.3.2 Indices physiques seuls (référence, mode `handcrafted`)
 
@@ -392,7 +403,7 @@ Modèle : efficientnet_b0 · version 1.0.0 · 16 Mo · données : Community Fore
 Validation (générateurs jamais vus) : AUC 0,978 · bal. acc 0,942 · EER 0,057
 AIGenImages2026 (test, 19 modèles 2024–2025 jamais vus) : AUC 0,954 · AP 0,991 · pire générateur : flux-pro_v1.1 (AUC 0,865)
 Robustesse : JPEG75 AUC 0,962 · JPEG50 0,967 · resize0.5 0,943 · blur1.0 0,968
-Pipeline complet (fusion full) : à compléter après calibration (§ 7), ≥ CNN seul
+Fusion calibrée livrée (calib-2026-09-10) : fft 0,920 · noise 0,928 · cnn 1,000 · fusion full 1,000 (val hors-pli, 360 img)
 ```
 
 ## 10. Contrat d'API officiel

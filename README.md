@@ -52,26 +52,30 @@ curl -X POST http://127.0.0.1:32188/detect-ai-image \
 | `ai_detector/contracts/` | Contrat partagé : JSON Schema + types TypeScript (`ai_detector.d.ts`) |
 | `training/` | `train.py`, `evaluate.py`, `export_onnx.py`, `calibrate_fusion.py`, `data.py`, `transforms.py`, `model.py` |
 | `training/colab/ai_detector_colab.ipynb` | Notebook Google Colab complet (données → entraînement → export → calibration) |
-| `model/detector.onnx` | Modèle ONNX **(placeholder de signature, non entraîné — voir ci-dessous)** + `model_card.json` |
+| `model/detector.onnx` | Modèle ONNX **entraîné v1.0.0** (`efficientnet_b0`, 16 Mo, `trained=true`) + `model_card.json` + `calibration.json` |
 | `docs/ai_detector.md` | Architecture détaillée, datasets, protocole d'entraînement, rapport de performances, contrat d'API |
 | `tests/` | 48 tests pytest (modules, API, CLI, matérialisation des données, pipeline d'entraînement de bout en bout sur CPU) |
 
 ## État du modèle CNN
 
-Le fichier versionné `model/detector.onnx` est un **placeholder** qui garantit le contrat
-d'entrée/sortie ONNX (`image[N,3,224,224] → logit[N,1]`, métadonnées `trained=false`).
-Le moteur le détecte et **exclut le CNN de la fusion** : les scores proviennent alors des
-indices physiques seuls (mode `handcrafted`, signalé par `GET /health` et le champ
-`warnings`). L'entraînement réel s'effectue sur Google Colab avec le notebook fourni ;
-`training/export_onnx.py` produit ensuite un `detector.onnx` entraîné (`trained=true`)
-qui active automatiquement la fusion complète.
+Le fichier versionné `model/detector.onnx` est le **modèle entraîné v1.0.0**
+(`efficientnet_b0`, 4,01 M paramètres, 16 Mo, `trained=true`). Le moteur le charge et
+**inclut le CNN dans la fusion** : `GET /health` renvoie `status: ok` et `python -m
+ai_detector info` affiche `fusion_mode: full`. Le contrat ONNX est
+`image[N,3,224,224] → logit[N,1]` ; métriques et empreinte SHA-256 dans `model_card.json`.
 
-> **Modèle v1.0.0 entraîné (9 septembre 2026).** Un `efficientnet_b0` (16 Mo) a été entraîné
-> via le notebook : **AUC 0,978** en validation (générateurs jamais vus) et **AUC 0,954** sur
-> AIGenImages2026 (19 modèles 2024–2025 jamais vus), robustesse AUC ≥ 0,94 sous JPEG /
-> redimensionnement / flou. Détails dans `docs/ai_detector.md` § 9.3.1. Une fois ce fichier
-> déposé dans `model/detector.onnx` (binaire, commité via Git normal — 16 Mo, LFS non requis),
-> le détecteur passe en mode `full`.
+> **Performances (modèle v1.0.0, entraîné le 9 septembre 2026).** **AUC 0,978** en validation
+> (générateurs jamais vus) et **AUC 0,954** sur AIGenImages2026 (19 modèles 2024–2025 jamais
+> vus), robustesse AUC ≥ 0,94 sous JPEG / redimensionnement / flou. **Fusion calibrée** livrée
+> (`model/calibration.json`, source `calib-2026-09-10`) : AUC hors-pli `fft` 0,920 · `noise`
+> 0,928 · `cnn` 1,000 · **fusion full 1,000** (validation, 360 images). Détails dans
+> `docs/ai_detector.md` § 9.3.1 et § 7. Fichiers binaires commités via Git normal (16 Mo, LFS
+> non requis).
+>
+> Historique : tant qu'aucun modèle entraîné n'est présent, le dépôt embarque un **placeholder
+> de signature** (`trained=false`) que le moteur exclut de la fusion (mode `handcrafted`,
+> `status: degraded`) ; remplacer le fichier par l'export entraîné active le mode `full` sans
+> modification de code.
 
 ## Entraînement (Colab ou poste GPU)
 
