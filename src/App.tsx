@@ -14,6 +14,7 @@ import "./components/OnboardingWizard.css";
 // ── F-009: Lazy-load tabs ──────────────────────────────────────────────────────
 const HomeTab = lazy(() => import("./components/HomeTab"));
 const AgentsTab = lazy(() => import("./components/AgentsTab"));
+const LocalAiView = lazy(() => import("./views/LocalAiView"));
 const ConnectionsTab = lazy(() => import("./components/ConnectionsTab"));
 const SettingsTab = lazy(() => import("./components/SettingsTab"));
 
@@ -77,6 +78,7 @@ function getEffectiveTheme(theme: string): string {
 const TABS: { id: Tab; label: string }[] = [
   { id: "home",        label: "Home" },
   { id: "agents",      label: "Agents" },
+  { id: "detect",      label: "AI Detector" },
   { id: "connections", label: "Connections" },
   { id: "settings",   label: "Settings" },
 ];
@@ -243,6 +245,12 @@ function AppInner() {
           return (
             <Suspense fallback={tabFallback}>
               <AgentsTab />
+            </Suspense>
+          );
+        case "detect":
+          return (
+            <Suspense fallback={tabFallback}>
+              <LocalAiView />
             </Suspense>
           );
         case "connections":

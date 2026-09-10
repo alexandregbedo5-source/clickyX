@@ -10,7 +10,7 @@ export interface ToastMessage {
   type: ToastType;
 }
 
-export type Tab = "home" | "agents" | "connections" | "settings";
+export type Tab = "home" | "agents" | "detect" | "connections" | "settings";
 
 interface AppCtx {
   toasts: ToastMessage[];
