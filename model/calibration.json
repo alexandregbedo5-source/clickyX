@@ -1,0 +1,225 @@
+{
+  "schema_version": 1,
+  "version": "calib-2026-09-10",
+  "source": "Community Forensics-Small val (generateurs jamais vus) v1.0.0",
+  "frequency": {
+    "features": [
+      "slope",
+      "hf_residual",
+      "hf_residual_abs",
+      "hf_energy_ratio",
+      "peak_max_z",
+      "peak_density",
+      "grid_peak_z",
+      "anisotropy",
+      "profile_roughness"
+    ],
+    "mean": [
+      -2.6798170577945184,
+      -1.1374842887546945,
+      1.3372034214911939,
+      0.08693781440037429,
+      4.9253980423165675,
+      0.0004897864558733714,
+      3.6827106578273328,
+      0.7283215106917363,
+      0.18365203617781029
+    ],
+    "std": [
+      0.6154200190044771,
+      1.2181988984106662,
+      0.9948698773231501,
+      0.11634310229076536,
+      2.0081400172041,
+      0.001318467515852547,
+      1.8778611491452786,
+      1.0057554267471718,
+      0.13303416527097986
+    ],
+    "weights": [
+      -0.9487752867155326,
+      -1.827364683362307,
+      -0.08426008959220582,
+      -0.5267652970702839,
+      -2.61201481681131,
+      0.1124825001370649,
+      1.688474189925451,
+      0.579598691731033,
+      0.35826312560036155
+    ],
+    "bias": -0.6836148386663577
+  },
+  "noise": {
+    "features": [
+      "flat_noise_std",
+      "shot_noise_corr",
+      "flat_kurtosis",
+      "residual_ac_peak",
+      "residual_spec_peak_z",
+      "residual_grid_peak_z",
+      "cfa_strength",
+      "jpeg_grid_strength",
+      "channel_residual_corr",
+      "flat_block_fraction"
+    ],
+    "mean": [
+      0.004001940860282904,
+      -0.07050525199165615,
+      3.3159681502717477,
+      0.04220855446449908,
+      4.225581986603701,
+      2.975528647048526,
+      0.12184036279125726,
+      0.1145782907484808,
+      0.9203488219115469,
+      0.33747241020537544
+    ],
+    "std": [
+      0.003958776002838557,
+      0.42114491449761277,
+      1.436176164969088,
+      0.05850311498037548,
+      1.513454812912812,
+      1.4799223310374459,
+      1.543701913483143,
+      0.20209636868945743,
+      0.07617165744162425,
+      0.2585960803258101
+    ],
+    "weights": [
+      -0.22406575083882127,
+      0.28175327682532914,
+      0.276065512281548,
+      -0.5853026714466968,
+      -1.254341130580291,
+      1.4166755667345434,
+      0.8028739270051711,
+      -3.7886841237090607,
+      -0.7569301907825932,
+      -0.6328145925939188
+    ],
+    "bias": -1.5352593967124273
+  },
+  "fusion": {
+    "threshold": 0.5,
+    "full": {
+      "weights": {
+        "fft": 0.12355156542125327,
+        "noise": 1.6956213057923957,
+        "cnn": 3.8892114917026457
+      },
+      "bias": -1.7583616733822505
+    },
+    "handcrafted": {
+      "weights": {
+        "fft": 1.020476346980496,
+        "noise": 0.9710898975798447
+      },
+      "bias": 0.2817264495554992
+    }
+  },
+  "metadata": {
+    "created_at": "2026-09-10T10:56:32+00:00",
+    "git_commit": "05553dd",
+    "l2": 1.0,
+    "folds": 5,
+    "cnn_model": "1.0.0",
+    "report": {
+      "n": 360,
+      "n_real": 225,
+      "n_ai": 135,
+      "generators": {
+        "Anushka26__my-pet-dog": 31,
+        "lenssssw__roblox-clothing-ai-maker": 32,
+        "real:coco": 47,
+        "real:ffhq": 44,
+        "real:landscapeshq": 48,
+        "real:vision": 86,
+        "stablediffusionapi__dreamshaperxlturbov21fix5": 41,
+        "stablediffusionapi__ultraspice": 31
+      },
+      "univariate_auc": {
+        "frequency": {
+          "slope": 0.2985679012345679,
+          "hf_residual": 0.17468312757201646,
+          "hf_residual_abs": 0.7902222222222222,
+          "hf_energy_ratio": 0.19147325102880658,
+          "peak_max_z": 0.5356707818930041,
+          "peak_density": 0.4731028806584362,
+          "grid_peak_z": 0.7263539094650205,
+          "anisotropy": 0.5814320987654321,
+          "profile_roughness": 0.6129382716049383
+        },
+        "noise": {
+          "flat_noise_std": 0.2427808693036547,
+          "shot_noise_corr": 0.5316212964355542,
+          "flat_kurtosis": 0.558354639795458,
+          "residual_ac_peak": 0.39878189300411526,
+          "residual_spec_peak_z": 0.4450041152263374,
+          "residual_grid_peak_z": 0.6020740740740741,
+          "cfa_strength": 0.6227489711934157,
+          "jpeg_grid_strength": 0.23163786008230453,
+          "channel_residual_corr": 0.33507818930041156,
+          "flat_block_fraction": 0.2746666666666667
+        }
+      },
+      "module_auc_oof": {
+        "fft_score": 0.9196707818930041,
+        "noise_score": 0.9284279835390947
+      },
+      "fusion_handcrafted_oof": {
+        "n": 360,
+        "n_real": 225,
+        "n_ai": 135,
+        "threshold": 0.5,
+        "accuracy": 0.9305555555555556,
+        "balanced_accuracy": 0.9296296296296296,
+        "tpr_recall_ai": 0.9259259259259259,
+        "tnr_specificity_real": 0.9333333333333333,
+        "precision_ai": 0.8928571428571429,
+        "f1_ai": 0.9090909090909091,
+        "auc": 0.979522633744856,
+        "average_precision": 0.9688951438662579,
+        "tpr_at_fpr_1pct": 0.7555555555555555,
+        "tpr_at_fpr_5pct": 0.9037037037037037,
+        "eer": 0.06666666666666665,
+        "eer_threshold": 0.4736962821726738,
+        "ece": 0.03201266688302482,
+        "brier": 0.05557461745706999,
+        "confusion": {
+          "tp": 125,
+          "tn": 210,
+          "fp": 15,
+          "fn": 10
+        }
+      },
+      "cnn_auc": 0.9999341563786008,
+      "fusion_full_oof": {
+        "n": 360,
+        "n_real": 225,
+        "n_ai": 135,
+        "threshold": 0.5,
+        "accuracy": 1.0,
+        "balanced_accuracy": 1.0,
+        "tpr_recall_ai": 1.0,
+        "tnr_specificity_real": 1.0,
+        "precision_ai": 1.0,
+        "f1_ai": 1.0,
+        "auc": 1.0,
+        "average_precision": 1.0,
+        "tpr_at_fpr_1pct": 1.0,
+        "tpr_at_fpr_5pct": 1.0,
+        "eer": 0.0,
+        "eer_threshold": 0.9241822305609758,
+        "ece": 0.001907964557630525,
+        "brier": 0.0003581618230472605,
+        "confusion": {
+          "tp": 135,
+          "tn": 225,
+          "fp": 0,
+          "fn": 0
+        }
+      }
+    }
+  }
+}

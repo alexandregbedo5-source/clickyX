@@ -1,0 +1,97 @@
+{
+  "n": 360,
+  "n_real": 225,
+  "n_ai": 135,
+  "generators": {
+    "Anushka26__my-pet-dog": 31,
+    "lenssssw__roblox-clothing-ai-maker": 32,
+    "real:coco": 47,
+    "real:ffhq": 44,
+    "real:landscapeshq": 48,
+    "real:vision": 86,
+    "stablediffusionapi__dreamshaperxlturbov21fix5": 41,
+    "stablediffusionapi__ultraspice": 31
+  },
+  "univariate_auc": {
+    "frequency": {
+      "slope": 0.2985679012345679,
+      "hf_residual": 0.17468312757201646,
+      "hf_residual_abs": 0.7902222222222222,
+      "hf_energy_ratio": 0.19147325102880658,
+      "peak_max_z": 0.5356707818930041,
+      "peak_density": 0.4731028806584362,
+      "grid_peak_z": 0.7263539094650205,
+      "anisotropy": 0.5814320987654321,
+      "profile_roughness": 0.6129382716049383
+    },
+    "noise": {
+      "flat_noise_std": 0.2427808693036547,
+      "shot_noise_corr": 0.5316212964355542,
+      "flat_kurtosis": 0.558354639795458,
+      "residual_ac_peak": 0.39878189300411526,
+      "residual_spec_peak_z": 0.4450041152263374,
+      "residual_grid_peak_z": 0.6020740740740741,
+      "cfa_strength": 0.6227489711934157,
+      "jpeg_grid_strength": 0.23163786008230453,
+      "channel_residual_corr": 0.33507818930041156,
+      "flat_block_fraction": 0.2746666666666667
+    }
+  },
+  "module_auc_oof": {
+    "fft_score": 0.9196707818930041,
+    "noise_score": 0.9284279835390947
+  },
+  "fusion_handcrafted_oof": {
+    "n": 360,
+    "n_real": 225,
+    "n_ai": 135,
+    "threshold": 0.5,
+    "accuracy": 0.9305555555555556,
+    "balanced_accuracy": 0.9296296296296296,
+    "tpr_recall_ai": 0.9259259259259259,
+    "tnr_specificity_real": 0.9333333333333333,
+    "precision_ai": 0.8928571428571429,
+    "f1_ai": 0.9090909090909091,
+    "auc": 0.979522633744856,
+    "average_precision": 0.9688951438662579,
+    "tpr_at_fpr_1pct": 0.7555555555555555,
+    "tpr_at_fpr_5pct": 0.9037037037037037,
+    "eer": 0.06666666666666665,
+    "eer_threshold": 0.4736962821726738,
+    "ece": 0.03201266688302482,
+    "brier": 0.05557461745706999,
+    "confusion": {
+      "tp": 125,
+      "tn": 210,
+      "fp": 15,
+      "fn": 10
+    }
+  },
+  "cnn_auc": 0.9999341563786008,
+  "fusion_full_oof": {
+    "n": 360,
+    "n_real": 225,
+    "n_ai": 135,
+    "threshold": 0.5,
+    "accuracy": 1.0,
+    "balanced_accuracy": 1.0,
+    "tpr_recall_ai": 1.0,
+    "tnr_specificity_real": 1.0,
+    "precision_ai": 1.0,
+    "f1_ai": 1.0,
+    "auc": 1.0,
+    "average_precision": 1.0,
+    "tpr_at_fpr_1pct": 1.0,
+    "tpr_at_fpr_5pct": 1.0,
+    "eer": 0.0,
+    "eer_threshold": 0.9241822305609758,
+    "ece": 0.001907964557630525,
+    "brier": 0.0003581618230472605,
+    "confusion": {
+      "tp": 135,
+      "tn": 225,
+      "fp": 0,
+      "fn": 0
+    }
+  }
+}
